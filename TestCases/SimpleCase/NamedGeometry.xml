@@ -1,0 +1,8 @@
+<NamedGeometry>
+    <Volume name="Bottom">
+        <Tag>1</Tag>
+    </Volume>
+    <Volume name="Top">
+        <Tag>2</Tag>
+    </Volume>
+</NamedGeometry>
