@@ -55,7 +55,7 @@ for i, element in enumerate(Interfaces):
     adj = gmsh.model.getAdjacencies(element[0],element[1])
     interfaceVolPair.append([[2,adj[0][0]],[2,adj[0][1]]])
 
-
+gmsh.option.set_number("Geometry.VolumeLabels",1)
 gmsh.model.occ.synchronize()
 
 # See results
