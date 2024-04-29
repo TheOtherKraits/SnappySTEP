@@ -96,6 +96,11 @@ for i, element in enumerate(volumes):
 
 
     gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+    # export stl
+
+    #Clear phsical groups
+
+    #Create physical group for each interface volume pair
 
 
 # See results
