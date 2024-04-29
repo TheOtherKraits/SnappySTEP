@@ -3,6 +3,8 @@ import gmsh
 import xml.etree.ElementTree as ET
 import os
 from readerFuncs import *
+from collections import Counter
+from itertools import count
 
 parser = argparse.ArgumentParser(description='Prepare STEP geometry for SnappyHexMesh using GMSH')
 parser.add_argument('filename', metavar='*.stp', type=str, nargs=1,help='STEP file to be processed')
@@ -51,12 +53,50 @@ Interfaces = {x for x in geoBounds if geoBounds.count(x) > 1} # Checks each inde
 print(len(Interfaces), "contacting face(s) found.")
 # get volumes of interfaces
 interfaceVolPair = [] # List of dim, tag pairs of volume pairs of each interface
+interfaceNames = []
 for i, element in enumerate(Interfaces):
     adj = gmsh.model.getAdjacencies(element[0],element[1])
-    interfaceVolPair.append([[2,adj[0][0]],[2,adj[0][1]]])
+    interfaceVolPair.append([[3,adj[0][0]],[3,adj[0][1]]])
+    namePair = [gmsh.model.getEntityName(3,adj[0][0]), gmsh.model.getEntityName(3,adj[0][1])] # Gets names of both volumes
+    namePair.sort # sorts names for consistency
+    interfaceNames.append(namePair[0] + "_to_" + namePair[1]) #Adds name to list
+
+# Rename repeated interface names    
+c = Counter(interfaceNames)
+iters = {k: count(1) for k, v in c.items() if v > 1}
+interfaceNames = [x+"_"+str(next(iters[x])) if x in iters else x for x in interfaceNames]
+# Renaming might need to changed or done after other operations. Not sure how I need to handle multiple interfaces. Seperate patches in single STL, seperate STL and overlap with named surfaces
+
+
 
 gmsh.option.set_number("Geometry.VolumeLabels",1)
 gmsh.model.occ.synchronize()
+
+# Mesh
+#gmsh.model.mesh.set_size
+gmsh.model.mesh.generate(2)
+
+# Set Physical Surfaces and Export STLs
+# Start with exterior surfaces
+
+for i, element in enumerate(volumes):
+    bounds = gmsh.model.getBoundary([element],True,False,False)
+    isExternal = []
+    for j, face in enumerate(bounds):
+        # Find surfaces that bound more than one volume
+        if face in Interfaces:
+            isExternal.append(False)
+        else:
+            isExternal.append(True)
+    if any(isExternal):
+        externalList = []
+        for k, face in enumerate(bounds):
+            if isExternal[k]:
+                externalList.append(bounds[k][1]) # Gets face tag
+
+
+    gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+
 
 # See results
 gmsh.fltk.run()
