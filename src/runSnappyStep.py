@@ -54,17 +54,19 @@ print(len(Interfaces), "contacting face(s) found.")
 # get volumes of interfaces
 interfaceVolPair = [] # List of dim, tag pairs of volume pairs of each interface
 interfaceNames = []
+interfaceList = []
 for i, element in enumerate(Interfaces):
     adj = gmsh.model.getAdjacencies(element[0],element[1])
     interfaceVolPair.append([[3,adj[0][0]],[3,adj[0][1]]])
     namePair = [gmsh.model.getEntityName(3,adj[0][0]), gmsh.model.getEntityName(3,adj[0][1])] # Gets names of both volumes
     namePair.sort # sorts names for consistency
     interfaceNames.append(namePair[0] + "_to_" + namePair[1]) #Adds name to list
+    interfaceList.append(element) # List rather than set for use later
 
 # Rename repeated interface names    
 c = Counter(interfaceNames)
 iters = {k: count(1) for k, v in c.items() if v > 1}
-interfaceNames = [x+"_"+str(next(iters[x])) if x in iters else x for x in interfaceNames]
+interfacePatchNames = [x+"_"+str(next(iters[x])) if x in iters else x for x in interfaceNames]
 # Renaming might need to changed or done after other operations. Not sure how I need to handle multiple interfaces. Seperate patches in single STL, seperate STL and overlap with named surfaces
 
 
@@ -77,6 +79,8 @@ gmsh.model.occ.synchronize()
 gmsh.model.mesh.generate(2)
 
 # Set Physical Surfaces and Export STLs
+# export settings
+gmsh.option.set_number("Mesh.StlOneSolidPerSurface",2)
 # Start with exterior surfaces
 
 for i, element in enumerate(volumes):
@@ -96,11 +100,25 @@ for i, element in enumerate(volumes):
 
 
     gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
-    # export stl
+# export stl
+gmsh.write(os.path.abspath(args.filename[0]).split('.')[0]+".stl")
+#Clear all phsical groups
+gmsh.model.removePhysicalGroups([])
+#Create physical group for each interface volume pair
+uniqueInterfaceNames = set(interfaceNames)
+for i, element in enumerate(uniqueInterfaceNames):
 
-    #Clear phsical groups
+    for j, name in enumerate(interfaceNames):
+        if name == element:
+            # add to physical group
+            gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfacePatchNames[j])
+        else:
+            continue 
+    gmsh.write(os.path.join(geoPath[0],element+".stl"))
+    gmsh.model.removePhysicalGroups([])
 
-    #Create physical group for each interface volume pair
+
+
 
 
 # See results
