@@ -157,3 +157,6 @@ launch.json
 
 #MacOS
 .DS_Store
+
+#Outputs
+*.stl
