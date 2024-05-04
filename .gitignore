@@ -160,3 +160,13 @@ launch.json
 
 #Outputs
 *.stl
+
+#OpenFOAM
+
+blockMeshDict
+polyMesh
+meshQualityDict
+cellToRegion
+fvSchemes
+fvSolution
+snappyHexMeshDict
