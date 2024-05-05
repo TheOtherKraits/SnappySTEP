@@ -1,0 +1,11 @@
+[project]
+name = "SnappySTEP"
+version = "0.0.1"
+
+[project.scripts]
+snappySTEP = "snappy_step:mainFunc"
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
