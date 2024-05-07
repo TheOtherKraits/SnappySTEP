@@ -1,2 +1,2 @@
 # SnappySTEP
- Tool to process STEP files STLs suitalbe for SnappyHexMesh in OpenFOAM
+ Tool to read STEP files and generate STLs suitalbe for SnappyHexMesh in OpenFOAM
