@@ -1,0 +1,11 @@
+[MESH]
+MeshSize = "default"
+MeshMethod = "default"
+# Method options here
+
+[GEOMETRY] # Not implimented yet
+PreProcessSequence = ["none"]
+# Optionally enter sequence of geometry processing steps. See Gmsh documentation for details. Seperate entires in array by comma.
+# fixDegenerated fixSmallEdges fixSmallFaces sewFaces makeSolids defeature
+Scaling = 1
+# Geometry.OCCScaling

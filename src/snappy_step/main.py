@@ -4,6 +4,7 @@ import os
 from .readerFuncs import *
 from collections import Counter
 from itertools import count
+import tomllib
 
 
 def mainFunc():
@@ -15,6 +16,10 @@ def mainFunc():
     ext = [".stp", ".step", ".STP", ".STEP"]
     relPath = "./constant/geometry"
     files = []
+    
+    # Read Config
+    with open("./system/snappyStep.toml", "rb") as f:
+        config = tomllib.load(f)
 
     # Check for OpenFOAM case structure
 
