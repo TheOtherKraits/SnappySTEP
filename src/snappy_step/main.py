@@ -17,15 +17,16 @@ def mainFunc():
     relPath = "./constant/geometry"
     files = []
     
-    # Read Config
-    with open("./system/snappyStep.toml", "rb") as f:
-        config = tomllib.load(f)
 
     # Check for OpenFOAM case structure
 
     if not os.path.exists(relPath):
         print("Please run from OpenFOAM case root directory.")
         exit(1)
+
+    # Read Config
+    with open("./system/snappyStep.toml", "rb") as f:
+        config = tomllib.load(f)
 
     for file in os.listdir(relPath):
         if file.endswith(tuple(ext)):
@@ -51,6 +52,7 @@ def mainFunc():
     # geoPath = os.path.split(os.path.join(relPath, files[0]))
     geoPath = relPath # Fix the need for this later ...
 
+
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
     gmsh.model.occ.fragment([],[])
@@ -65,6 +67,19 @@ def mainFunc():
     for i, element in enumerate(VolNames): # loop through all Volume entries
         gmsh.model.setEntityName(3,volumes[i][1],element) # Adds names to gmsh entites
     print('Volume names assigned')
+
+    print("Getting pointInside")
+    # get inside points for each volume
+    insidePoints = []
+    for i, element in enumerate(volumes):
+        insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
+        # see if isInside can do check on points
+        # Below was attempt to use first face and offset to get point inside. Could not figure out how to get a point on the center of a face
+        # faces = gmsh.model.get_adjacencies(2,element[1])
+        # coord = gmsh.model.get
+        # param = gmsh.model.getParametrization(2,faces[1][0],coord)# first element of downard adjacency
+        # normal = gmsh.model.getNormal()
+    
 
     print('Identifying contacts')
 
@@ -103,6 +118,7 @@ def mainFunc():
     gmsh.option.set_number("Mesh.StlOneSolidPerSurface",2)
     # Start with exterior surfaces
 
+    external_regions = [] # This will be used in the foamDict script
     for i, element in enumerate(volumes):
         bounds = gmsh.model.getBoundary([element],True,False,False)
         isExternal = []
@@ -120,24 +136,29 @@ def mainFunc():
 
 
         gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+        external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
     # export stl
     gmsh.write(os.path.abspath(stepFile).split('.')[0]+".stl")
     #Clear all phsical groups
     gmsh.model.removePhysicalGroups([])
     #Create physical group for each interface volume pair
     uniqueInterfaceNames = set(interfaceNames)
+    interface_regions = [] # This will be used in the foamDict script
     for i, element in enumerate(uniqueInterfaceNames):
 
         for j, name in enumerate(interfaceNames):
             if name == element:
                 # add to physical group
                 gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfacePatchNames[j])
+                interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
             else:
                continue 
         gmsh.write(os.path.join(geoPath,element+".stl"))
         gmsh.model.removePhysicalGroups([])
 
-
+    # Write shell script
+    # maybe split into one fucntion for geometry section, and nother for the points and interfaces
+    writeFoamDictionary() #need to think about how to match up points with interfaces
 
 
 

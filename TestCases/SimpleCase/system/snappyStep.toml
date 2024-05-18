@@ -9,3 +9,4 @@ PreProcessSequence = ["none"]
 # fixDegenerated fixSmallEdges fixSmallFaces sewFaces makeSolids defeature
 Scaling = 1
 # Geometry.OCCScaling
+InsidePointOffset = "default"
