@@ -71,8 +71,10 @@ def mainFunc():
     print("Getting pointInside")
     # get inside points for each volume
     insidePoints = []
+    volTags = []
     for i, element in enumerate(volumes):
         insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
+        volTags.append(element[1])
         # see if isInside can do check on points
         # Below was attempt to use first face and offset to get point inside. Could not figure out how to get a point on the center of a face
         # faces = gmsh.model.get_adjacencies(2,element[1])
@@ -92,7 +94,7 @@ def mainFunc():
     interfaceList = []
     for i, element in enumerate(Interfaces):
         adj = gmsh.model.getAdjacencies(element[0],element[1])
-        interfaceVolPair.append([[3,adj[0][0]],[3,adj[0][1]]])
+        interfaceVolPair.append([adj[0][0],adj[0][1]])
         namePair = [gmsh.model.getEntityName(3,adj[0][0]), gmsh.model.getEntityName(3,adj[0][1])] # Gets names of both volumes
         namePair.sort # sorts names for consistency
         interfaceNames.append(namePair[0] + "_to_" + namePair[1]) #Adds name to list
@@ -144,23 +146,34 @@ def mainFunc():
     #Create physical group for each interface volume pair
     uniqueInterfaceNames = set(interfaceNames)
     interface_regions = [] # This will be used in the foamDict script
+    interface_patches = [] # This will be used in the foamDict script
+    volPair = [] # This will be used in the foamDict script
     for i, element in enumerate(uniqueInterfaceNames):
-
+        patches = []
         for j, name in enumerate(interfaceNames):
             if name == element:
                 # add to physical group
                 gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfacePatchNames[j])
                 interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
+                volPair.append(interfaceVolPair[j]) # This will be used in the foamDict script
+                patches.append(interfacePatchNames[j]) # This will be used in the foamDict script
             else:
-               continue 
+               continue
         gmsh.write(os.path.join(geoPath,element+".stl"))
         gmsh.model.removePhysicalGroups([])
+        interface_patches.append(patches) # This will be used in the foamDict script
 
     # Write shell script
+    open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
     # maybe split into one fucntion for geometry section, and nother for the points and interfaces
-    writeFoamDictionary() #need to think about how to match up points with interfaces
+    # External walls
+    writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
+    # Interfaces
+    for i, element in enumerate(interface_regions):
+        writeFoamDictionaryGeo(element,interface_patches[i])
 
-
+    # Refinement Surfaces commands
+    writeFoamDictionarySurf(interface_regions,volPair,VolNames,volTags,insidePoints)
 
     # See results
     if args.v:
