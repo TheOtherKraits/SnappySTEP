@@ -160,6 +160,7 @@ launch.json
 
 #Outputs
 *.stl
+snappyStep.sh
 
 #OpenFOAM
 
