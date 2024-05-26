@@ -163,8 +163,9 @@ def mainFunc():
         gmsh.model.removePhysicalGroups([])
         interface_patches.append(patches) # This will be used in the foamDict script
 
-    # Write shell script
+    # Write shell scripts
     open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
+    open("snappyStepGenerateMesh.sh", 'w').close()
     # maybe split into one fucntion for geometry section, and nother for the points and interfaces
     # External walls
     writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
@@ -172,10 +173,14 @@ def mainFunc():
     for i, element in enumerate(interface_regions):
         writeFoamDictionaryGeo(element,interface_patches[i])
 
-    # Refinement Surfaces commands
-    writeFoamDictionarySurf(interface_regions,volPair,VolNames,volTags,insidePoints)
+    # Refinement Surfaces commands and get name default zone
+    defaultZone = writeFoamDictionarySurf(interface_regions,volPair,VolNames,volTags,insidePoints)
+
+    # Write mesh generation commands
+    writeMeshCommands(defaultZone)
 
     os.chmod("./snappyStep.sh",0o777) # Make shell script executable
+    os.chmod("./snappyStepGenerateMesh.sh",0o777)
 
     # See results
     if args.v:
