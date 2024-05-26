@@ -175,6 +175,8 @@ def mainFunc():
     # Refinement Surfaces commands
     writeFoamDictionarySurf(interface_regions,volPair,VolNames,volTags,insidePoints)
 
+    os.chmod("./snappyStep.sh",0o777) # Make shell script executable
+
     # See results
     if args.v:
         gmsh.fltk.run()
