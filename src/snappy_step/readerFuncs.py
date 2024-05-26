@@ -8,10 +8,14 @@ def regexStepBodyNames(fullPath): # Just regex all text?
 
 def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
-    commands.append("foamDictionary system/snappyHexMeshDict -add geomety/" + name ) #need to get these commands right
-    commands.append("foamDictionary system/snappyHexMeshDict -entry " + name)
+    commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -remove") # clear any existing regions
+    commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -add \"{}\"") # re add regions
     for i, element in enumerate(regions):
-        commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/"+name+"/regions/element -add {}")
+        commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions/" + element +" -add {}")
+        commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions/" + element +"/name -add "+ element +";")
+    
+          
+    commands.append("\n") # add new line to end
     # write file
     fileName = "snappyStep.sh"
     with open(fileName, 'a') as script:
