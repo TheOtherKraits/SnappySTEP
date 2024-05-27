@@ -179,8 +179,8 @@ def mainFunc():
     # Write mesh generation commands
     writeMeshCommands(defaultZone)
 
-    os.chmod("./snappyStep.sh",0o777) # Make shell script executable
-    os.chmod("./snappyStepGenerateMesh.sh",0o777)
+    os.chmod("./snappyStep.sh",0o755) # Make shell script executable
+    os.chmod("./snappyStepGenerateMesh.sh",0o755)
 
     # See results
     if args.v:

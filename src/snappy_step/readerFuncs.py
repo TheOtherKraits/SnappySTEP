@@ -32,6 +32,7 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
     nContacts, volumeTags, volumeNames, coordinate = zip(*sorted(zip(nContacts, volumeTags, volumeNames,coordinate)))
     for i, element in enumerate(volumeNames):
         if element == volumeNames[-1]:
+            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/insidePoint -set \"(" + " ".join(str(x) for x in coordinate[i]) + ")\";")
             break
         k = volumeTags[i] # Tag of volume
         for j, tag in enumerate(pairs): # Find first insance of volume in pairs
