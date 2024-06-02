@@ -64,7 +64,7 @@ def writeMeshCommands(defaultZone: str):
     commands.append("blockMesh")
     commands.append("./snappyStep.sh")
     commands.append("snappyHexMesh -overwrite")
-    commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -overwrite")
+    commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -useFaceZones -overwrite")
     commands.append("checkMesh")
     fileName = "snappyStepGenerateMesh.sh"
     with open(fileName, 'a') as script:
