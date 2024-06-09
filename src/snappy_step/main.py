@@ -147,6 +147,9 @@ def mainFunc():
     uniqueInterfaceNames = set(interfaceNames)
     interface_regions = [] # This will be used in the foamDict script
     interface_patches = [] # This will be used in the foamDict script
+    interface_fn = [] # This will be used in the foamDict script
+    
+    
     volPair = [] # This will be used in the foamDict script
     for i, element in enumerate(uniqueInterfaceNames):
         patches = []
@@ -155,6 +158,7 @@ def mainFunc():
                 # add to physical group
                 gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfacePatchNames[j])
                 interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
+                interface_fn.append(element) # This will be used in the foamDict script
                 volPair.append(interfaceVolPair[j]) # This will be used in the foamDict script
                 patches.append(interfacePatchNames[j]) # This will be used in the foamDict script
             else:
@@ -170,11 +174,14 @@ def mainFunc():
     # External walls
     writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
     # Interfaces
-    for i, element in enumerate(interface_regions):
+    #for i, element in enumerate(interface_regions):
+    #    writeFoamDictionaryGeo(element,interface_patches[i])
+    for i, element in enumerate(uniqueInterfaceNames):
         writeFoamDictionaryGeo(element,interface_patches[i])
+        # writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    defaultZone = writeFoamDictionarySurf(interface_regions,volPair,VolNames,volTags,insidePoints)
+    defaultZone = writeFoamDictionarySurf(interface_fn,volPair,VolNames,volTags,insidePoints)
 
     # Write mesh generation commands
     writeMeshCommands(defaultZone)
