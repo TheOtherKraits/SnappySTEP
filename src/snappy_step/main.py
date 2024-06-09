@@ -178,7 +178,7 @@ def mainFunc():
     #    writeFoamDictionaryGeo(element,interface_patches[i])
     for i, element in enumerate(uniqueInterfaceNames):
         writeFoamDictionaryGeo(element,interface_patches[i])
-        # writeRefinementRegions(element, interface_patches[i])
+        writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
     defaultZone = writeFoamDictionarySurf(interface_fn,volPair,VolNames,volTags,insidePoints)
