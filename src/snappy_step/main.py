@@ -163,9 +163,9 @@ def mainFunc():
                 patches.append(interfacePatchNames[j]) # This will be used in the foamDict script
             else:
                continue
-        gmsh.write(os.path.join(geoPath,element+".stl"))
-        gmsh.model.removePhysicalGroups([])
-        interface_patches.append(patches) # This will be used in the foamDict script
+            gmsh.write(os.path.join(geoPath,interfacePatchNames[j]+".stl"))
+            gmsh.model.removePhysicalGroups([])
+        # interface_patches.append(patches) # This will be used in the foamDict script
 
     # Write shell scripts
     open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
@@ -176,12 +176,13 @@ def mainFunc():
     # Interfaces
     #for i, element in enumerate(interface_regions):
     #    writeFoamDictionaryGeo(element,interface_patches[i])
-    for i, element in enumerate(uniqueInterfaceNames):
-        writeFoamDictionaryGeo(element,interface_patches[i])
-        writeRefinementRegions(element, interface_patches[i])
+    for i, element in enumerate(interfacePatchNames):
+        writeFoamDictionaryGeo(element,[]) # pass empty region list since each interface only has the single region
+        writeRefinementRegions(element)
+        #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    defaultZone = writeFoamDictionarySurf(interface_fn,volPair,VolNames,volTags,insidePoints)
+    defaultZone = writeFoamDictionarySurf(interfacePatchNames,volPair,VolNames,volTags,insidePoints)
 
     # Write mesh generation commands
     writeMeshCommands(defaultZone)
