@@ -173,12 +173,13 @@ def mainFunc():
     # maybe split into one fucntion for geometry section, and nother for the points and interfaces
     # External walls
     writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
+    writeRefinementRegions(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
     # Interfaces
     #for i, element in enumerate(interface_regions):
     #    writeFoamDictionaryGeo(element,interface_patches[i])
     for i, element in enumerate(interfacePatchNames):
         writeFoamDictionaryGeo(element,[]) # pass empty region list since each interface only has the single region
-        writeRefinementRegions(element)
+        writeRefinementRegions(element,[])
         #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone

@@ -9,7 +9,7 @@ def regexStepBodyNames(fullPath): # Just regex all text?
 def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
     commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -remove") # clear any existing regions
-    if not regions: # Check if empty
+    if regions != []: # Check if empty
         commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -add \"{}\"") # re add regions
         for i, element in enumerate(regions):
             commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions/" + element +" -add {}")
@@ -63,9 +63,19 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
         script.write("\n".join(commands))
     return element
 
-def writeRefinementRegions(name: str) -> None:
+def writeRefinementRegions(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
-    commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/faceZone -add " + name + ";")
+    
+    commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions -remove") # remove any existing regions
+    if regions != []: # Check if empty
+        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions -add \"{}\"") # add regions sub dict
+        for i, element in enumerate(regions):
+            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +" -add {}")
+            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/level -add \"(2 2)\";")
+            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/patchInfo -add \"{}\";")
+            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/patchInfo/type -add wall;")
+    else:
+        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/faceZone -add " + name + ";")
     commands.append("\n") # add new line to end
     # write file
     fileName = "snappyStep.sh"
