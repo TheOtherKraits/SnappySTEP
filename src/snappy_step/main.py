@@ -14,13 +14,13 @@ def mainFunc():
     args = parser.parse_args()
     
     ext = [".stp", ".step", ".STP", ".STEP"]
-    relPath = "./constant/geometry"
+    geoPath = "./constant/geometry"
     files = []
     
 
     # Check for OpenFOAM case structure
 
-    if not os.path.exists(relPath):
+    if not os.path.exists(geoPath):
         print("Please run from OpenFOAM case root directory.")
         exit(1)
 
@@ -28,7 +28,7 @@ def mainFunc():
     with open("./system/snappyStep.toml", "rb") as f:
         config = tomllib.load(f)
 
-    for file in os.listdir(relPath):
+    for file in os.listdir(geoPath):
         if file.endswith(tuple(ext)):
             files.append(file)
     
@@ -47,11 +47,8 @@ def mainFunc():
 
     # retrive geometry
     print('Reading geometry')
-    stepFile = os.path.join(relPath, files[0])
+    stepFile = os.path.join(geoPath, files[0])
     gmsh.model.occ.importShapes(stepFile)
-    # geoPath = os.path.split(os.path.join(relPath, files[0]))
-    geoPath = relPath # Fix the need for this later ...
-
 
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
@@ -104,7 +101,7 @@ def mainFunc():
     c = Counter(interfaceNames)
     iters = {k: count(1) for k, v in c.items() if v > 1}
     interfacePatchNames = [x+"_"+str(next(iters[x])) if x in iters else x for x in interfaceNames]
-    # Renaming might need to changed or done after other operations. Not sure how I need to handle multiple interfaces. Seperate patches in single  STL, seperate STL and overlap with named surfaces
+    # Renaming might need to changed or done after other operations.
 
 
 
@@ -145,9 +142,9 @@ def mainFunc():
     gmsh.model.removePhysicalGroups([])
     #Create physical group for each interface volume pair
     uniqueInterfaceNames = set(interfaceNames)
-    interface_regions = [] # This will be used in the foamDict script
-    interface_patches = [] # This will be used in the foamDict script
-    interface_fn = [] # This will be used in the foamDict script
+    # interface_regions = [] # This will be used in the foamDict script
+    # interface_patches = [] # This will be used in the foamDict script
+    # interface_fn = [] # This will be used in the foamDict script
     
     
     volPair = [] # This will be used in the foamDict script
@@ -157,8 +154,8 @@ def mainFunc():
             if name == element:
                 # add to physical group
                 gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfacePatchNames[j])
-                interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
-                interface_fn.append(element) # This will be used in the foamDict script
+                # interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
+                # interface_fn.append(element) # This will be used in the foamDict script
                 volPair.append(interfaceVolPair[j]) # This will be used in the foamDict script
                 patches.append(interfacePatchNames[j]) # This will be used in the foamDict script
             else:
