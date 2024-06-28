@@ -28,6 +28,7 @@ def mainFunc():
     with open("./system/snappyStep.toml", "rb") as f:
         config = tomllib.load(f)
 
+    # Find geometry files
     for file in os.listdir(geoPath):
         if file.endswith(tuple(ext)):
             files.append(file)
@@ -109,7 +110,12 @@ def mainFunc():
     gmsh.model.occ.synchronize()
 
     # Mesh
-    #gmsh.model.mesh.set_size
+    # Use commands below to set mesh sizes
+    gmsh.option.setNumber("Mesh.Algorithm",config["MESH"]["MeshAlgorithm"])
+    gmsh.option.setNumber("Mesh.MeshSizeFactor",config["MESH"]["MeshSizeFactor"])
+    gmsh.option.setNumber("Mesh.MeshSizeMin",config["MESH"]["MeshSizeMin"])
+    gmsh.option.setNumber("Mesh.MeshSizeMax",config["MESH"]["MeshSizeMax"])
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature",config["MESH"]["MeshSizeFromCurvature"])
     gmsh.model.mesh.generate(2)
 
     # Set Physical Surfaces and Export STLs
