@@ -189,10 +189,12 @@ def mainFunc():
     defaultZone = writeFoamDictionarySurf(interfacePatchNames,volPair,VolNames,volTags,insidePoints)
 
     # Write mesh generation commands
-    writeMeshCommands(defaultZone)
+    writeMeshCommands()
+    writeSplitCommand(defaultZone)
 
     os.chmod("./snappyStep.sh",0o755) # Make shell script executable
     os.chmod("./snappyStepGenerateMesh.sh",0o755)
+    os.chmod("./snappyStepSplitMeshRegions.sh",0o755)
 
     # See results
     if args.v:
