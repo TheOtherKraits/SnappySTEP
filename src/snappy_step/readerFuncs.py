@@ -99,14 +99,22 @@ def writeRefinementRegions(name: str, regions: list[str]) -> None:
 #         script.write("\n".join(commands))
 
 
-def writeMeshCommands(defaultZone: str):
+def writeMeshCommands():
     commands = []
-    commands.append("snappyHexMeshConfig")
+    commands.append("snappyHexMeshConfig -explicitFeatures")
     commands.append("blockMesh")
     commands.append("./snappyStep.sh")
+    commands.append("surfaceFeatures")
     commands.append("snappyHexMesh -overwrite")
-    commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -useFaceZones -overwrite")
+    commands.append("./snappyStepSplitMeshRegions.sh")
     commands.append("checkMesh")
     fileName = "snappyStepGenerateMesh.sh"
     with open(fileName, 'a') as script:
         script.write("\n".join(commands))
+
+def writeSplitCommand(defaultZone: str):
+    commands = []
+    commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -useFaceZones -overwrite")
+    fileName = "snappyStepSplitMeshRegions.sh"
+    with open(fileName, 'a') as script:
+        script.write("\n".join(commands))    
