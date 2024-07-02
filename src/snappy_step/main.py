@@ -71,7 +71,11 @@ def mainFunc():
     insidePoints = []
     volTags = []
     for i, element in enumerate(volumes):
-        insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
+
+        if VolNames[i] in config["insidePoint"]:
+            insidePoints.append(config["insidePoint"][VolNames[i]])
+        else:
+            insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
         volTags.append(element[1])
         # see if isInside can do check on points
         # Below was attempt to use first face and offset to get point inside. Could not figure out how to get a point on the center of a face
