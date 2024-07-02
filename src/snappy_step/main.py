@@ -173,6 +173,7 @@ def mainFunc():
     # Write shell scripts
     open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
     open("snappyStepGenerateMesh.sh", 'w').close()
+    open("snappyStepSplitMeshRegions.sh", 'w').close()
     # maybe split into one fucntion for geometry section, and nother for the points and interfaces
     # External walls
     writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
