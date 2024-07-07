@@ -9,7 +9,8 @@ import tomllib
 
 def mainFunc():
     parser = argparse.ArgumentParser(description='Prepare STEP geometry for SnappyHexMesh using GMSH')
-    parser.add_argument('-v', action='store_true')
+    parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
+    parser.add_argument('-vf', action='store_true',help='Display faces and labels. Exits without generating mesh') # view faces after coherence and don't generate mesh
 
     args = parser.parse_args()
     
@@ -112,6 +113,14 @@ def mainFunc():
 
     gmsh.option.set_number("Geometry.VolumeLabels",1)
     gmsh.model.occ.synchronize()
+
+# optionally view faces and volumes and exit before mesh
+    if args.vf:
+        gmsh.option.set_number("Geometry.Surfaces",1)
+        gmsh.option.set_number("Geometry.SurfaceLabels",1)
+        gmsh.model.occ.synchronize()
+        gmsh.fltk.run()
+        exit(1)
 
     # Mesh
     # Use commands below to set mesh sizes
