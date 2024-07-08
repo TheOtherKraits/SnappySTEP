@@ -115,7 +115,7 @@ def mainFunc():
     # Rename repeated interface names    
     c = Counter(interfaceNames)
     iters = {k: count(1) for k, v in c.items() if v > 1}
-    interfacePatchNames = [x+"_"+str(next(iters[x])) if x in iters else x for x in interfaceNames]
+    interfacePatchNames = [x+"_"+str(next(iters[x])).zfill(4) if x in iters else x for x in interfaceNames]
     # Renaming might need to changed or done after other operations.
 
     # Setting for viewing mesh
@@ -147,6 +147,7 @@ def mainFunc():
 
     external_regions = [] # This will be used in the foamDict script
     for i, element in enumerate(volumes):
+        counter = 1
         bounds = gmsh.model.getBoundary([element],True,False,False)
         isExternal = []
         for j, face in enumerate(bounds):
@@ -160,10 +161,13 @@ def mainFunc():
             for k, face in enumerate(bounds):
                 if isExternal[k]:
                     externalList.append(bounds[k][1]) # Gets face tag
+                    gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_"+str(counter).zfill(4))
+                    external_regions.append(VolNames[i]+"_"+str(counter).zfill(4)) # This will be used in the foamDict script
+                    counter = counter + 1
 
 
-        gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
-        external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
+        # gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+        # external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
     # export stl
     gmsh.write(os.path.abspath(stepFile).split('.')[0]+".stl")
     #Clear all phsical groups
