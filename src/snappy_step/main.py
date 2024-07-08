@@ -146,6 +146,7 @@ def mainFunc():
     # Start with exterior surfaces
 
     external_regions = [] # This will be used in the foamDict script
+    external_tag = [] # This will be used in the foamDict script
     for i, element in enumerate(volumes):
         counter = 1
         bounds = gmsh.model.getBoundary([element],True,False,False)
@@ -157,12 +158,14 @@ def mainFunc():
             else:
                 isExternal.append(True)
         if any(isExternal):
-            externalList = []
+            # externalList = []
             for k, face in enumerate(bounds):
                 if isExternal[k]:
-                    externalList.append(bounds[k][1]) # Gets face tag
-                    gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_"+str(counter).zfill(4))
+                    # externalList.append(bounds[k][1]) # Gets face tag
+                    # gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_"+str(counter).zfill(4))
+                    gmsh.model.addPhysicalGroup(2,[face[1]],-1,VolNames[i]+"_"+str(counter).zfill(4))
                     external_regions.append(VolNames[i]+"_"+str(counter).zfill(4)) # This will be used in the foamDict script
+                    external_tag.append([2, face[1]])
                     counter = counter + 1
 
 
@@ -213,7 +216,13 @@ def mainFunc():
         #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    defaultZone = writeFoamDictionarySurf(interfacePatchNames,volPair,VolNames,volTags,insidePoints)
+    defaultZone = writeFoamDictionarySurf(interfacePatchNames.copy(),volPair.copy(),VolNames,volTags,insidePoints)
+
+    # Write groups
+
+    # if makeGroups:
+        # writeFoamDictionaryInterfaceGroups(interfacePatchNames, interfaceList)
+        # writeFoamDictionaryExternalGroups(external_regions, external_tag)
 
     # Write mesh generation commands
     writeMeshCommands()
