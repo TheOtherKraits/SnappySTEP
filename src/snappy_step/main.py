@@ -43,6 +43,15 @@ def mainFunc():
     else:
         print(files[0]+" found.")
 
+    makeGroups = False
+    # Get manual face groups
+    if os.path.isfile("./constant/snappyStepGroups.toml"):
+        makeGroups = True
+        print ("Reading geometry names from snappyStepGroups.toml")
+        with open("./constant/snappyStepGroups.toml", "rb") as f:
+            snappyStepGroups = tomllib.load(f)
+    # add check for repeated tags in surface groups
+
     # Begin gmsh operations
     gmsh.initialize()
     gmsh.option.setString('Geometry.OCCTargetUnit', 'M') # Set meters as working unit
@@ -109,8 +118,7 @@ def mainFunc():
     interfacePatchNames = [x+"_"+str(next(iters[x])) if x in iters else x for x in interfaceNames]
     # Renaming might need to changed or done after other operations.
 
-
-
+    # Setting for viewing mesh
     gmsh.option.set_number("Geometry.VolumeLabels",1)
     gmsh.model.occ.synchronize()
 
@@ -131,9 +139,10 @@ def mainFunc():
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature",config["MESH"]["MeshSizeFromCurvature"])
     gmsh.model.mesh.generate(2)
 
-    # Set Physical Surfaces and Export STLs
     # export settings
     gmsh.option.set_number("Mesh.StlOneSolidPerSurface",2)
+
+    # Set Physical Surfaces and Export STLs
     # Start with exterior surfaces
 
     external_regions = [] # This will be used in the foamDict script
