@@ -182,6 +182,7 @@ def mainFunc():
     # interface_fn = [] # This will be used in the foamDict script
     
     
+    # This section can be simplified now that each interface is a differnt file. Can be one loop
     volPair = [] # This will be used in the foamDict script
     for i, element in enumerate(uniqueInterfaceNames):
         patches = []
@@ -220,9 +221,9 @@ def mainFunc():
 
     # Write groups
 
-    # if makeGroups:
-        # writeFoamDictionaryInterfaceGroups(interfacePatchNames, interfaceList)
-        # writeFoamDictionaryExternalGroups(external_regions, external_tag)
+    if makeGroups:
+        writeFoamDictionaryInterfaceGroups(interfacePatchNames, interfaceList, snappyStepGroups['surfaces'])
+        writeFoamDictionaryExternalGroups(external_regions, external_tag [snappyStepGroups['surfaces']])
 
     # Write mesh generation commands
     writeMeshCommands()
