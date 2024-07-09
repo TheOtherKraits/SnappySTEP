@@ -117,4 +117,30 @@ def writeSplitCommand(defaultZone: str):
     commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -useFaceZones -overwrite")
     fileName = "snappyStepSplitMeshRegions.sh"
     with open(fileName, 'a') as script:
-        script.write("\n".join(commands))    
+        script.write("\n".join(commands))   
+
+def writeFoamDictionaryInterfaceGroups(interfacePatchNames: list, interfaceList: list, faceSets: dict):
+    # This does not work due to cell zone splitting. Try using changeDictionary
+    commands = []
+    for iter, patch in enumerate(interfacePatchNames):
+        for key in faceSets:
+            if interfaceList[iter][1] in faceSets[key]:
+                commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + patch + "/patchInfo/inGroups -add \"(" + key +")\";")
+                continue
+    # write file
+    fileName = "snappyStep.sh"
+    with open(fileName, 'a') as script:
+        script.write("\n".join(commands))
+
+def writeFoamDictionaryExternalGroups(external_regions: list, external_tag: list, faceSets: dict, name):
+    commands = []
+    for iter, patch in enumerate(external_regions):
+        for key in faceSets:
+            if external_tag[iter][1] in faceSets[key]:
+                commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + patch +"/patchInfo/inGroups -add \"(" + key +")\";")
+                commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + patch +"/patchInfo/type -set patch;")
+                continue
+    # write file
+    fileName = "snappyStep.sh"
+    with open(fileName, 'a') as script:
+        script.write("\n".join(commands))

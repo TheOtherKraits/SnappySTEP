@@ -223,8 +223,8 @@ def mainFunc():
 
     if makeGroups:
         writeFoamDictionaryInterfaceGroups(interfacePatchNames, interfaceList, snappyStepGroups['surfaces'])
-        writeFoamDictionaryExternalGroups(external_regions, external_tag [snappyStepGroups['surfaces']])
-
+        writeFoamDictionaryExternalGroups(external_regions, external_tag, snappyStepGroups['surfaces'],os.path.splitext(os.path.basename(stepFile))[0])
+            # This does not work due to cell zone splitting. Try using changeDictionary
     # Write mesh generation commands
     writeMeshCommands()
     writeSplitCommand(defaultZone)
