@@ -144,3 +144,8 @@ def writeFoamDictionaryExternalGroups(external_regions: list, external_tag: list
     fileName = "snappyStep.sh"
     with open(fileName, 'a') as script:
         script.write("\n".join(commands))
+
+def flatten(arg):
+    if not isinstance(arg, list): # if not list
+        return [arg]
+    return [x for sub in arg for x in flatten(sub)]

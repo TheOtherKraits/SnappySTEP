@@ -50,10 +50,6 @@ def mainFunc():
         print ("Reading geometry names from snappyStepGroups.toml")
         with open("./constant/snappyStepGroups.toml", "rb") as f:
             snappyStepGroups = tomllib.load(f)
-            patch_tags = flatten(list(snappyStepGroups["surfaces"].values()))
-
-    else:
-        snappyStepGroups = []
     # add check for repeated tags in surface groups
 
     # Begin gmsh operations
@@ -117,9 +113,9 @@ def mainFunc():
         interfaceList.append(element) # List rather than set for use later
 
     # Rename repeated interface names    
-    # c = Counter(interfaceNames)
-    # iters = {k: count(1) for k, v in c.items() if v > 1}
-    # interfacePatchNames = [x+"_"+str(next(iters[x])).zfill(4) if x in iters else x for x in interfaceNames]
+    c = Counter(interfaceNames)
+    iters = {k: count(1) for k, v in c.items() if v > 1}
+    interfacePatchNames = [x+"_"+str(next(iters[x])).zfill(4) if x in iters else x for x in interfaceNames]
     # Renaming might need to changed or done after other operations.
 
     # Setting for viewing mesh
@@ -134,61 +130,6 @@ def mainFunc():
         gmsh.fltk.run()
         exit(1)
 
-    # Set Physical Surfaces
-    # Start with exterior surfaces
-
-    external_regions = [] # This will be used in the foamDict script
-    external_tag = [] # This will be used in the foamDict script
-    external_patches = []
-    for i, element in enumerate(volumes):
-        anyExternal = False # Don't need to make entry in dictionary if there are no external surfaces for this volume
-        bounds = gmsh.model.getBoundary([element],True,False,False)
-        isExternal = []
-        for j, face in enumerate(bounds):
-            # Find surfaces that bound more than one volume
-            if face in Interfaces:
-                isExternal.append(False)
-            else:
-                isExternal.append(True)
-        if any(isExternal):
-            externalList = []
-            for k, face in enumerate(bounds):
-                if face[1] in patch_tags and isExternal[k]:
-                    external_patches.append(face[1])
-                elif isExternal[k]:
-                    externalList.append(face[1]) # Gets face tag
-                    # gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_"+str(counter).zfill(4))
-                    # gmsh.model.addPhysicalGroup(2,[face[1]],-1,VolNames[i]+"_"+str(counter).zfill(4))
-                    # external_regions.append(VolNames[i]+"_"+str(counter).zfill(4)) # This will be used in the foamDict script
-                    external_tag.append([2, face[1]]) # May not need. Leave for now
-                    if not anyExternal:
-                        anyExternal = True
-                    # counter = counter + 1        
-        gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
-        if anyExternal: # Don't need to make entry in dictionary if there are no external surfaces for this volume
-            external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
-
-    # Check that all patches are either internal or external
-
-    for key in snappyStepGroups["surfaces"]:
-        res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
-        if res:
-            continue
-        else:
-            if any(x in snappyStepGroups["surfaces"][key] for x in external_patches):
-                print("Mismatched patch groups found. Exiting")
-                exit(1)
-
-
-    # Add external patches to physical groups
-    for key in snappyStepGroups["surfaces"]:
-        if snappyStepGroups["surfaces"][key][0] in external_patches:
-            gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-            external_regions.append(key)
-        else:
-            continue
-
-
     # Mesh
     # Use commands below to set mesh sizes
     gmsh.option.setNumber("Mesh.Algorithm",config["MESH"]["MeshAlgorithm"])
@@ -201,6 +142,35 @@ def mainFunc():
     # export settings
     gmsh.option.set_number("Mesh.StlOneSolidPerSurface",2)
 
+    # Set Physical Surfaces and Export STLs
+    # Start with exterior surfaces
+
+    external_regions = [] # This will be used in the foamDict script
+    external_tag = [] # This will be used in the foamDict script
+    for i, element in enumerate(volumes):
+        counter = 1
+        bounds = gmsh.model.getBoundary([element],True,False,False)
+        isExternal = []
+        for j, face in enumerate(bounds):
+            # Find surfaces that bound more than one volume
+            if face in Interfaces:
+                isExternal.append(False)
+            else:
+                isExternal.append(True)
+        if any(isExternal):
+            # externalList = []
+            for k, face in enumerate(bounds):
+                if isExternal[k]:
+                    # externalList.append(bounds[k][1]) # Gets face tag
+                    # gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_"+str(counter).zfill(4))
+                    gmsh.model.addPhysicalGroup(2,[face[1]],-1,VolNames[i]+"_"+str(counter).zfill(4))
+                    external_regions.append(VolNames[i]+"_"+str(counter).zfill(4)) # This will be used in the foamDict script
+                    external_tag.append([2, face[1]])
+                    counter = counter + 1
+
+
+        # gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+        # external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
     # export stl
     gmsh.write(os.path.abspath(stepFile).split('.')[0]+".stl")
     #Clear all phsical groups
@@ -212,42 +182,23 @@ def mainFunc():
     # interface_fn = [] # This will be used in the foamDict script
     
     
-    # interfaces not in snappy step surfaces
+    # This section can be simplified now that each interface is a differnt file. Can be one loop
     volPair = [] # This will be used in the foamDict script
-    uniqueInterfaceNamesList = []
     for i, element in enumerate(uniqueInterfaceNames):
         patches = []
         for j, name in enumerate(interfaceNames):
-            if interfaceList[j][1] in patch_tags:
-                continue
-            elif name == element:
+            if name == element:
                 # add to physical group
-                gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfaceNames[j])
+                gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfacePatchNames[j])
                 # interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
                 # interface_fn.append(element) # This will be used in the foamDict script
-                # volPair.append(interfaceVolPair[j]) # This will be used in the foamDict script
-                patches.append(interfaceList[j][1]) # This will be used in the foamDict script
+                volPair.append(interfaceVolPair[j]) # This will be used in the foamDict script
+                patches.append(interfacePatchNames[j]) # This will be used in the foamDict script
             else:
                continue
-        volPair.append(interfaceVolPair[j])
-        uniqueInterfaceNamesList.append(element)
-        gmsh.model.addPhysicalGroup(2,patches,-1,element)
-        gmsh.write(os.path.join(geoPath,element+".stl"))
-        gmsh.model.removePhysicalGroups([])
+            gmsh.write(os.path.join(geoPath,interfacePatchNames[j]+".stl"))
+            gmsh.model.removePhysicalGroups([])
         # interface_patches.append(patches) # This will be used in the foamDict script
-
-    # interfaces in snappy step surfaces
-    for key in snappyStepGroups["surfaces"]:
-        if snappyStepGroups["surfaces"][key][0] not in external_patches:
-            gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-        else:
-            continue
-        uniqueInterfaceNamesList.append(key)
-        adj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
-        volPair.append([adj[0][0],adj[0][1]])
-        gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-        gmsh.write(os.path.join(geoPath,key+".stl"))
-        gmsh.model.removePhysicalGroups([])
 
     # Write shell scripts
     open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
@@ -260,19 +211,19 @@ def mainFunc():
     # Interfaces
     #for i, element in enumerate(interface_regions):
     #    writeFoamDictionaryGeo(element,interface_patches[i])
-    for i, element in enumerate(uniqueInterfaceNamesList):
+    for i, element in enumerate(interfacePatchNames):
         writeFoamDictionaryGeo(element,[]) # pass empty region list since each interface only has the single region
         writeRefinementRegions(element,[])
         #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    defaultZone = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),VolNames,volTags,insidePoints)
+    defaultZone = writeFoamDictionarySurf(interfacePatchNames.copy(),volPair.copy(),VolNames,volTags,insidePoints)
 
     # Write groups
 
-    # if makeGroups:
-    #     writeFoamDictionaryInterfaceGroups(interfacePatchNames, interfaceList, snappyStepGroups['surfaces'])
-    #     writeFoamDictionaryExternalGroups(external_regions, external_tag, snappyStepGroups['surfaces'],os.path.splitext(os.path.basename(stepFile))[0])
+    if makeGroups:
+        writeFoamDictionaryInterfaceGroups(interfacePatchNames, interfaceList, snappyStepGroups['surfaces'])
+        writeFoamDictionaryExternalGroups(external_regions, external_tag, snappyStepGroups['surfaces'],os.path.splitext(os.path.basename(stepFile))[0])
             # This does not work due to cell zone splitting. Try using changeDictionary
     # Write mesh generation commands
     writeMeshCommands()
