@@ -181,10 +181,12 @@ def mainFunc():
 
 
     # Add external patches to physical groups
+    setPatchList = []
     for key in snappyStepGroups["surfaces"]:
         if snappyStepGroups["surfaces"][key][0] in external_patches:
             gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
             external_regions.append(key)
+            setPatchList.append(key)
         else:
             continue
 
@@ -237,6 +239,7 @@ def mainFunc():
         # interface_patches.append(patches) # This will be used in the foamDict script
 
     # interfaces in snappy step surfaces
+    
     for key in snappyStepGroups["surfaces"]:
         if snappyStepGroups["surfaces"][key][0] not in external_patches:
             gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
@@ -267,6 +270,9 @@ def mainFunc():
 
     # Refinement Surfaces commands and get name default zone
     defaultZone = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),VolNames,volTags,insidePoints)
+
+    # Set external groups as type patch
+    setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0])
 
     # Write groups
 
