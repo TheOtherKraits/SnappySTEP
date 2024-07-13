@@ -149,3 +149,11 @@ def flatten(arg):
     if not isinstance(arg, list): # if not list
         return [arg]
     return [x for sub in arg for x in flatten(sub)]
+
+def setExternalPatch(regionList: list, name: str):
+    commands = []
+    for region in regionList:
+        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + region +"/patchInfo/type -set patch;")
+    fileName = "snappyStep.sh"
+    with open(fileName, 'a') as script:
+        script.write("\n".join(commands))
