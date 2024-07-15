@@ -224,7 +224,7 @@ def mainFunc():
                 continue
             elif name == element:
                 # add to physical group
-                gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfaceNames[j])
+                # gmsh.model.addPhysicalGroup(2,[interfaceList[j][1]],-1,interfaceNames[j])
                 # interface_regions.append(interfacePatchNames[j]) # This will be used in the foamDict script
                 # interface_fn.append(element) # This will be used in the foamDict script
                 # volPair.append(interfaceVolPair[j]) # This will be used in the foamDict script
@@ -248,7 +248,7 @@ def mainFunc():
         uniqueInterfaceNamesList.append(key)
         adj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
         volPair.append([adj[0][0],adj[0][1]])
-        gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+        # gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
         gmsh.write(os.path.join(geoPath,key+".stl"))
         gmsh.model.removePhysicalGroups([])
 
