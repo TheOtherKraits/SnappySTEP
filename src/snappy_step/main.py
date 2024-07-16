@@ -164,9 +164,10 @@ def mainFunc():
                     if not anyExternal:
                         anyExternal = True
                     # counter = counter + 1        
-        gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+        
         if anyExternal: # Don't need to make entry in dictionary if there are no external surfaces for this volume
             external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
+            gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
 
     # Check that all patches are either internal or external
 
@@ -231,6 +232,8 @@ def mainFunc():
                 patches.append(interfaceList[j][1]) # This will be used in the foamDict script
             else:
                continue
+        if not patches: # skip adding to physical group and lists if patch list is empty
+            continue
         volPair.append(interfaceVolPair[j])
         uniqueInterfaceNamesList.append(element)
         gmsh.model.addPhysicalGroup(2,patches,-1,element)
