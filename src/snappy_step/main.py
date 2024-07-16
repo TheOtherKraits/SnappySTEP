@@ -46,15 +46,23 @@ def mainFunc():
     makeGroups = False
     # Get manual face groups
     if os.path.isfile("./constant/snappyStepGroups.toml"):
-        makeGroups = True
         print ("Reading geometry names from snappyStepGroups.toml")
         with open("./constant/snappyStepGroups.toml", "rb") as f:
             snappyStepGroups = tomllib.load(f)
-            patch_tags = flatten(list(snappyStepGroups["surfaces"].values()))
+            if "surfaces" in snappyStepGroups:
+                print("Getting surface groups")
+                patch_tags = flatten(list(snappyStepGroups["surfaces"].values()))
+                makeGroups = True
 
     else:
         snappyStepGroups = []
+        patch_tags = []
     # add check for repeated tags in surface groups
+
+    if makeGroups:
+        if len(set(patch_tags))<len(patch_tags):
+            print(" Overlapping selected surfaces detected. Exiting")
+            exit(1)
 
     # Begin gmsh operations
     gmsh.initialize()
@@ -64,6 +72,10 @@ def mainFunc():
     print('Reading geometry')
     stepFile = os.path.join(geoPath, files[0])
     gmsh.model.occ.importShapes(stepFile)
+    gmsh.model.occ.synchronize()
+
+    # How many volumes before coherence
+    nVol = len(gmsh.model.getEntities(3))
 
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
@@ -74,6 +86,11 @@ def mainFunc():
     # Get Geometry Names
     print('Getting Names of Bodies and Surfaces')
     volumes = gmsh.model.getEntities(3)
+    if len(volumes) != nVol:
+        print("Coherence changed number of volumes. Check geometry. Exiting")
+        # print(nVol)
+        # print(len(volumes))
+        exit(1)
     VolNames = regexStepBodyNames(stepFile)
     print("Found Volumes: ",VolNames)
     for i, element in enumerate(VolNames): # loop through all Volume entries
@@ -170,26 +187,25 @@ def mainFunc():
             gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
 
     # Check that all patches are either internal or external
+    if makeGroups:
+        for key in snappyStepGroups["surfaces"]:
+            res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
+            if res:
+                continue
+            else:
+                if any(x in snappyStepGroups["surfaces"][key] for x in external_patches):
+                    print("Mismatched patch groups found. Exiting")
+                    exit(1)
 
-    for key in snappyStepGroups["surfaces"]:
-        res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
-        if res:
-            continue
-        else:
-            if any(x in snappyStepGroups["surfaces"][key] for x in external_patches):
-                print("Mismatched patch groups found. Exiting")
-                exit(1)
-
-
-    # Add external patches to physical groups
-    setPatchList = []
-    for key in snappyStepGroups["surfaces"]:
-        if snappyStepGroups["surfaces"][key][0] in external_patches:
-            gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-            external_regions.append(key)
-            setPatchList.append(key)
-        else:
-            continue
+        # Add external patches to physical groups
+        setPatchList = []
+        for key in snappyStepGroups["surfaces"]:
+            if snappyStepGroups["surfaces"][key][0] in external_patches:
+                gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+                external_regions.append(key)
+                setPatchList.append(key)
+            else:
+                continue
 
 
     # Mesh
@@ -242,18 +258,18 @@ def mainFunc():
         # interface_patches.append(patches) # This will be used in the foamDict script
 
     # interfaces in snappy step surfaces
-    
-    for key in snappyStepGroups["surfaces"]:
-        if snappyStepGroups["surfaces"][key][0] not in external_patches:
-            gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-        else:
-            continue
-        uniqueInterfaceNamesList.append(key)
-        adj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
-        volPair.append([adj[0][0],adj[0][1]])
-        # gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-        gmsh.write(os.path.join(geoPath,key+".stl"))
-        gmsh.model.removePhysicalGroups([])
+    if makeGroups:
+        for key in snappyStepGroups["surfaces"]:
+            if snappyStepGroups["surfaces"][key][0] not in external_patches:
+                gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+            else:
+                continue
+            uniqueInterfaceNamesList.append(key)
+            adj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
+            volPair.append([adj[0][0],adj[0][1]])
+            # gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+            gmsh.write(os.path.join(geoPath,key+".stl"))
+            gmsh.model.removePhysicalGroups([])
 
     # Write shell scripts
     open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
