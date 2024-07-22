@@ -29,6 +29,11 @@ def mainFunc():
     with open("./system/snappyStep.toml", "rb") as f:
         config = tomllib.load(f)
 
+    if "insidePoint" in config:  
+        print("Using insidePoints defined in config")
+    else:
+        config["insidePoint"] = []
+
     # Find geometry files
     for file in os.listdir(geoPath):
         if file.endswith(tuple(ext)):
@@ -57,7 +62,7 @@ def mainFunc():
     else:
         snappyStepGroups = []
         patch_tags = []
-    # add check for repeated tags in surface groups
+    
 
     if makeGroups:
         if len(set(patch_tags))<len(patch_tags):
@@ -267,6 +272,15 @@ def mainFunc():
             uniqueInterfaceNamesList.append(key)
             adj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
             volPair.append([adj[0][0],adj[0][1]])
+            setAdj = set([adj[0][0],adj[0][1]])
+            for iter, tag in enumerate(snappyStepGroups["surfaces"][key]):
+                if iter != 0:
+                    compAdj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
+                    if not setAdj == set([compAdj[iter][0],compAdj[iter][1]]):
+                        print("interface group " + key + " contains surfaces between multiple volume pairs. Please split into groups of single volume pairs. Exiting.")
+                        exit(1)
+
+                    
             # gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
             gmsh.write(os.path.join(geoPath,key+".stl"))
             gmsh.model.removePhysicalGroups([])
@@ -291,7 +305,8 @@ def mainFunc():
     defaultZone = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),VolNames,volTags,insidePoints)
 
     # Set external groups as type patch
-    setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0])
+    if makeGroups:
+        setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0])
 
     # Write groups
 
