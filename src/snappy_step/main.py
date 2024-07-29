@@ -33,6 +33,11 @@ def mainFunc():
         print("Using insidePoints defined in config")
     else:
         config["insidePoint"] = []
+    commands = []
+    if "sHM" in config:
+        mRFS = str(config["sHM"]["multiRegionFeatureSnap"])
+        commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/multiRegionFeatureSnap -set " + str(config["sHM"]["multiRegionFeatureSnap"]).lower()+";")
+
 
     # Find geometry files
     for file in os.listdir(geoPath):
