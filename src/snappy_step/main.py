@@ -281,7 +281,8 @@ def mainFunc():
             for iter, tag in enumerate(snappyStepGroups["surfaces"][key]):
                 if iter != 0:
                     compAdj = gmsh.model.getAdjacencies(2,snappyStepGroups["surfaces"][key][0])
-                    if not setAdj == set([compAdj[iter][0],compAdj[iter][1]]):
+                    # if not setAdj == set([compAdj[iter][0],compAdj[iter][1]]):
+                    if not setAdj == set([compAdj[0][0],compAdj[0][1]]):
                         print("interface group " + key + " contains surfaces between multiple volume pairs. Please split into groups of single volume pairs. Exiting.")
                         exit(1)
 
@@ -291,27 +292,29 @@ def mainFunc():
             gmsh.model.removePhysicalGroups([])
 
     # Write shell scripts
-    open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists
-    open("snappyStepGenerateMesh.sh", 'w').close()
-    open("snappyStepSplitMeshRegions.sh", 'w').close()
+    # open("snappyStep.sh", 'w').close() # Create empty file. overwrites if exists # Replaced wiht fnction
+    # open("snappyStepGenerateMesh.sh", 'w').close()
+    # open("snappyStepSplitMeshRegions.sh", 'w').close()
     # maybe split into one fucntion for geometry section, and nother for the points and interfaces
     # External walls
-    writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
-    writeRefinementRegions(os.path.splitext(os.path.basename(stepFile))[0],external_regions)
+    commands.extend(writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
+    commands.extend(writeRefinementRegions(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
     # Interfaces
     #for i, element in enumerate(interface_regions):
     #    writeFoamDictionaryGeo(element,interface_patches[i])
     for i, element in enumerate(uniqueInterfaceNamesList):
-        writeFoamDictionaryGeo(element,[]) # pass empty region list since each interface only has the single region
-        writeRefinementRegions(element,[])
+        commands.extend(writeFoamDictionaryGeo(element,[])) # pass empty region list since each interface only has the single region
+        commands.extend(writeRefinementRegions(element,[]))
         #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    defaultZone = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),VolNames,volTags,insidePoints)
+    surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),VolNames,volTags,insidePoints)
+    defaultZone = surfReturn[1]
+    commands.extend(surfReturn[0])
 
     # Set external groups as type patch
     if makeGroups:
-        setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0])
+        commands.extend(setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
 
     # Write groups
 
@@ -322,6 +325,7 @@ def mainFunc():
     # Write mesh generation commands
     writeMeshCommands()
     writeSplitCommand(defaultZone)
+    writeCommands('snappystep.sh',commands)
 
     os.chmod("./snappyStep.sh",0o755) # Make shell script executable
     os.chmod("./snappyStepGenerateMesh.sh",0o755)
