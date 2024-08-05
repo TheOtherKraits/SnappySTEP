@@ -21,12 +21,7 @@ def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
           
     commands.append("\n") # add new line to end
     return commands
-    # write file
-    # fileName = "snappyStep.sh"
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
     
-
 
 def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
     commands = [] # use append to add to list
@@ -36,8 +31,6 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
         nContacts.append(flatPairs.count(element)) # counts number of interfaces for each volume
     # Sort volumes by number of contacts
     nContacts, volumeTags, volumeNames, coordinate = zip(*sorted(zip(nContacts, volumeTags, volumeNames,coordinate)))
-    # commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces -remove") # clear any existing
-    # commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces -add \"{}\"") # re add
     for i, element in enumerate(volumeNames):
         if element == volumeNames[-1]:
             commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/insidePoint -set \"(" + " ".join(str(x) for x in coordinate[i]) + ")\";")
@@ -48,9 +41,7 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
                 break
             else:
                 continue
-        # commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + " -add \"{}\"")
-        # commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/level -add \"(2 2)\";")
-        # commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/faceZone -add " + names[j] + ";")
+
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/cellZone -add " + element + ";")
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/mode -add insidePoint;")
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/insidePoint -add \"(" + " ".join(str(x) for x in coordinate[i]) + ")\";")
@@ -58,16 +49,11 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
         # remove used interface from list
         names.pop(j)
         pairs.pop(j)
-
-        # write foamDictinary command strings here for each object.
     
     # write file
     commands.append("\n") # add new line to end
     return commands, element
-    # fileName = "snappyStep.sh"
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
-    # return element
+
 
 def writeRefinementRegions(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
@@ -84,26 +70,7 @@ def writeRefinementRegions(name: str, regions: list[str]) -> None:
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/faceZone -add " + name + ";")
     commands.append("\n") # add new line to end
     return commands
-    # write file
-    # fileName = "snappyStep.sh"
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
 
-# def writeRefinementRegions(name: str, regions: list[str]) -> None:
-#     commands = [] # use append to add to list
-#     commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions -add \"{}\"") # add regions sub dict
-#     commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/faceZone -add " + name + ";")
-#     for i, element in enumerate(regions):
-#         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +" -add {}")
-#         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/level -add \"(2 2)\";")
-#         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/"+ element +"/faceZone -add " + element + ";")
-#         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/patchInfo -add \"{}\";")
-#         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/patchInfo/type -add wall;")
-#     commands.append("\n") # add new line to end
-#     # write file
-#     fileName = "snappyStep.sh"
-#     with open(fileName, 'a') as script:
-#         script.write("\n".join(commands))
 
 
 def writeMeshCommands():
@@ -117,16 +84,14 @@ def writeMeshCommands():
     commands.append("checkMesh")
     fileName = "snappyStepGenerateMesh.sh"
     writeCommands(fileName,commands)
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
+  
 
 def writeSplitCommand(defaultZone: str):
     commands = []
     commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -useFaceZones -overwrite")
     fileName = "snappyStepSplitMeshRegions.sh"
     writeCommands(fileName,commands)
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))   
+ 
 
 def writeFoamDictionaryInterfaceGroups(interfacePatchNames: list, interfaceList: list, faceSets: dict):
     # This does not work due to cell zone splitting. Try using changeDictionary
@@ -137,10 +102,7 @@ def writeFoamDictionaryInterfaceGroups(interfacePatchNames: list, interfaceList:
                 commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + patch + "/patchInfo/inGroups -add \"(" + key +")\";")
                 continue
     return commands
-    # write file
-    # fileName = "snappyStep.sh"
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
+
 
 def writeFoamDictionaryExternalGroups(external_regions: list, external_tag: list, faceSets: dict, name):
     commands = []
@@ -151,10 +113,7 @@ def writeFoamDictionaryExternalGroups(external_regions: list, external_tag: list
                 commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + patch +"/patchInfo/type -set patch;")
                 continue
     return commands
-    # write file
-    # fileName = "snappyStep.sh"
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
+
 
 def flatten(arg):
     if not isinstance(arg, list): # if not list
@@ -166,6 +125,3 @@ def setExternalPatch(regionList: list, name: str):
     for region in regionList:
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + region +"/patchInfo/type -set patch;")
     return commands
-    # fileName = "snappyStep.sh"
-    # with open(fileName, 'a') as script:
-    #     script.write("\n".join(commands))
