@@ -6,6 +6,11 @@ def regexStepBodyNames(fullPath): # Just regex all text?
         bodyNames = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", StepFile.read())
         return bodyNames
 
+def regexStepShellNames(fullPath): # Just regex all text?
+    with open(fullPath, 'r') as StepFile:
+        shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(\#", StepFile.read())
+        return shellNames
+
 def writeCommands(fileName: str, commands: list):
     with open(fileName, 'w') as script:
         script.write("\n".join(commands))
