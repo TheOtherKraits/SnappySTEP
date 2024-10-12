@@ -171,3 +171,7 @@ cellToRegion
 fvSchemes
 fvSolution
 snappyHexMeshDict
+
+#GMSH
+*.geo
+*.msh
