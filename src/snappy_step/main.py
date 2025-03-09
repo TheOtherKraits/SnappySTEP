@@ -54,25 +54,25 @@ def mainFunc():
         print(files[0]+" found.")
 
     makeGroups = False
-    # Get manual face groups
-    if os.path.isfile("./constant/snappyStepGroups.toml"):
-        print ("Reading geometry names from snappyStepGroups.toml")
-        with open("./constant/snappyStepGroups.toml", "rb") as f:
-            snappyStepGroups = tomllib.load(f)
-            if "surfaces" in snappyStepGroups:
-                print("Getting surface groups")
-                patch_tags = flatten(list(snappyStepGroups["surfaces"].values()))
-                makeGroups = True
+    # # Get manual face groups
+    # if os.path.isfile("./constant/snappyStepGroups.toml"):
+    #     print ("Reading geometry names from snappyStepGroups.toml")
+    #     with open("./constant/snappyStepGroups.toml", "rb") as f:
+    #         snappyStepGroups = tomllib.load(f)
+    #         if "surfaces" in snappyStepGroups:
+    #             print("Getting surface groups")
+    #             patch_tags = flatten(list(snappyStepGroups["surfaces"].values()))
+    #             makeGroups = True
 
-    else:
-        snappyStepGroups = []
-        patch_tags = []
-    
+    # else:
+    #     snappyStepGroups = []
+    #     patch_tags = []
+    patch_tags = []    
 
-    if makeGroups:
-        if len(set(patch_tags))<len(patch_tags):
-            print(" Overlapping selected surfaces detected. Exiting")
-            exit(1)
+    # if makeGroups:
+    #     if len(set(patch_tags))<len(patch_tags):
+    #         print(" Overlapping selected surfaces detected. Exiting")
+    #         exit(1)
 
     # Begin gmsh operations
     gmsh.initialize()
@@ -81,11 +81,50 @@ def mainFunc():
     # retrive geometry
     print('Reading geometry')
     stepFile = os.path.join(geoPath, files[0])
-    gmsh.model.occ.importShapes(stepFile)
+    gmsh.model.occ.importShapes(stepFile,False) # Optional argument allows for lower dimension entities to be imported
     gmsh.model.occ.synchronize()
 
     # How many volumes before coherence
     nVol = len(gmsh.model.getEntities(3))
+
+    # Get surfaces
+    print("Getting Surface Names")
+    # print(surfaces)
+    snappyStepGroups, surfaceGroupLenghts = getStepSurfaces(stepFile)
+    print("Found Surfaces:")
+    print(snappyStepGroups)
+    if len(snappyStepGroups)>0:
+        makeGroups = True
+        surfaces = gmsh.model.occ.getEntities(2)
+        print(surfaces)
+        surfTags = []
+        surfTagPairs = []
+        # volSurfTagPairs = []
+        for i, element in enumerate(surfaces):
+            adj = gmsh.model.get_adjacencies(element[0],element[1])
+            print(adj)
+            if adj[0] == []:
+                surfTags.append(element[1])
+                surfTagPairs.append(element) # For surface coherence
+            # else:
+                # volSurfTagPairs.append(element) # For surface coherence
+        groupTags = [[] for i in range(len(surfaceGroupLenghts))]# empty list of lists
+        count = 0
+        for iter, element in enumerate(surfaceGroupLenghts):
+            for i in range(element):
+                groupTags[iter].append(surfTags[count])
+                count += 1 # increment counter
+        print(groupTags)
+    snappyStepGroupsDict = dict(zip(snappyStepGroups, groupTags)) # Combine into dictionary for easy acces
+
+
+    # for i, element in enumerate(surfaces):
+    #     print(gmsh.model.get_adjacencies(element[0],element[1]))
+    # gmsh.option.set_number("Geometry.Surfaces",1)
+    # gmsh.option.set_number("Geometry.SurfaceLabels",1)
+    # gmsh.model.occ.synchronize()
+    # gmsh.fltk.run()
+    # exit(1)
 
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
@@ -93,8 +132,16 @@ def mainFunc():
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
 
+    newTags, outDimTagsMap = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),surfTagPairs)
+    gmsh.model.occ.synchronize()
+
+    print(len(outDimTagsMap[:][:]))
+    if any(len(sublist) > 1 for sublist in outDimTagsMap):
+        print("geometry tags of face groups changed. Support for this to be added later. Please fully imprint surfaces in CAD. Exiting")
+        exit(1)
+    print(len(outDimTagsMap[1]))
     # Get Geometry Names
-    print('Getting Names of Bodies and Surfaces')
+    print('Getting Names of Bodies')
     volumes = gmsh.model.getEntities(3)
     if len(volumes) != nVol:
         print("Coherence changed number of volumes. Check geometry. Exiting")
@@ -172,7 +219,7 @@ def mainFunc():
         if any(isExternal):
             externalList = []
             for k, face in enumerate(bounds):
-                if face[1] in patch_tags and isExternal[k]:
+                if face[1] in surfTags and isExternal[k]:
                     external_patches.append(face[1])
                 elif isExternal[k]:
                     externalList.append(face[1]) # Gets face tag
@@ -187,24 +234,44 @@ def mainFunc():
 
     # Check that all patches are either internal or external
     if makeGroups:
-        for key in snappyStepGroups["surfaces"]:
-            res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
+        for key in snappyStepGroupsDict:
+            res = set(snappyStepGroupsDict[key]).issubset(external_patches)
             if res:
                 continue
             else:
-                if any(x in snappyStepGroups["surfaces"][key] for x in external_patches):
+                if any(x in snappyStepGroupsDict[key] for x in external_patches):
                     print("Mismatched patch groups found. Exiting")
                     exit(1)
 
         # Add external patches to physical groups
         setPatchList = []
-        for key in snappyStepGroups["surfaces"]:
-            if snappyStepGroups["surfaces"][key][0] in external_patches:
-                gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+        for key in snappyStepGroups:
+            if snappyStepGroupsDict[key][0] in external_patches:
+                gmsh.model.addPhysicalGroup(2,snappyStepGroupsDict[key],-1,key)
                 external_regions.append(key)
                 setPatchList.append(key)
             else:
                 continue
+
+        # if makeGroups:
+        # for key in snappyStepGroups["surfaces"]:
+        #     res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
+        #     if res:
+        #         continue
+        #     else:
+        #         if any(x in snappyStepGroups["surfaces"][key] for x in external_patches):
+        #             print("Mismatched patch groups found. Exiting")
+        #             exit(1)
+
+        # # Add external patches to physical groups
+        # setPatchList = []
+        # for key in snappyStepGroups["surfaces"]:
+        #     if snappyStepGroups["surfaces"][key][0] in external_patches:
+        #         gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+        #         external_regions.append(key)
+        #         setPatchList.append(key)
+        #     else:
+        #         continue
 
 
     # Mesh
@@ -248,8 +315,8 @@ def mainFunc():
 
     # interfaces in snappy step surfaces
     if makeGroups:
-        for key in snappyStepGroups["surfaces"]:
-            if snappyStepGroups["surfaces"][key][0] not in external_patches:
+        for key in snappyStepGroupsDict:
+            if snappyStepGroupsDict[key][0] not in external_patches:
                 gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
             else:
                 continue
