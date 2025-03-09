@@ -8,7 +8,7 @@ def regexStepBodyNames(fullPath): # Just regex all text?
 
 def regexStepShellNames(fullPath): # Just regex all text?
     with open(fullPath, 'r') as StepFile:
-        shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(\#", StepFile.read())
+        shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", StepFile.read())
         return shellNames
 
 def writeCommands(fileName: str, commands: list):
@@ -130,3 +130,20 @@ def setExternalPatch(regionList: list, name: str):
     for region in regionList:
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + region +"/patchInfo/type -set patch;")
     return commands
+
+
+def getStepSurfaces(fullPath):
+    with open(fullPath, 'r') as StepFile:
+        StepText = StepFile.read()
+    print(StepText)
+    Names = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", StepText)
+    surfaceLines = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'.*?\'\,\((#\d+)", StepText)
+    nSurfaces = [0] * len(Names)
+    for iter, line in enumerate(surfaceLines):
+        exp = re.compile(line + r"=OPEN_SHELL\(\'.*?\'\,\(([#\d+\,?]+)\)")
+        tempList = re.findall(exp,StepText)
+        print(tempList[0])
+        nSurfaces[iter] = tempList[0].count(",") +1 
+    return Names, nSurfaces
+
+
