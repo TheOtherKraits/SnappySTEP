@@ -4,11 +4,14 @@ import re
 def regexStepBodyNames(fullPath): # Just regex all text?
     with open(fullPath, 'r') as StepFile:
         bodyNames = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", StepFile.read())
+        bodyNames = validateNames(bodyNames)
         return bodyNames
 
 def regexStepShellNames(fullPath): # Just regex all text?
     with open(fullPath, 'r') as StepFile:
         shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", StepFile.read())
+        shellNames = validateNames(shellNames)
+        print(shellNames)
         return shellNames
 
 def writeCommands(fileName: str, commands: list):
@@ -135,7 +138,7 @@ def setExternalPatch(regionList: list, name: str):
 def getStepSurfaces(fullPath):
     with open(fullPath, 'r') as StepFile:
         StepText = StepFile.read()
-    print(StepText)
+    # print(StepText)
     Names = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", StepText)
     surfaceLines = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'.*?\'\,\((#\d+)", StepText)
     nSurfaces = [0] * len(Names)
@@ -144,6 +147,12 @@ def getStepSurfaces(fullPath):
         tempList = re.findall(exp,StepText)
         print(tempList[0])
         nSurfaces[iter] = tempList[0].count(",") +1 
+    Names = validateNames(Names)
     return Names, nSurfaces
 
+def validateNames(names):
+    names = [name.strip().replace(" ", "_") for name in names]
+    names = [name.strip().replace("(", "") for name in names]
+    names = [name.strip().replace(")", "") for name in names]
+    return names
 

@@ -252,7 +252,8 @@ def mainFunc():
                 setPatchList.append(key)
             else:
                 continue
-
+    # print(gmsh.model.getPhysicalGroups(-1))
+    # print(gmsh.model.getPhysicalName(2,7))
         # if makeGroups:
         # for key in snappyStepGroups["surfaces"]:
         #     res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
