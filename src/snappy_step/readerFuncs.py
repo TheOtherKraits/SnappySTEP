@@ -152,7 +152,50 @@ def getStepSurfaces(fullPath):
 
 def validateNames(names):
     names = [name.strip().replace(" ", "_") for name in names]
-    names = [name.strip().replace("(", "") for name in names]
-    names = [name.strip().replace(")", "") for name in names]
+    names = [name.replace("(", "") for name in names]
+    names = [name.replace(")", "") for name in names]
     return names
 
+def getLocationInMesh(gmsh, volTag: int):
+    coords = []
+    # First try center of mass
+    coords = gmsh.model.occ.getCenterOfMass(3,volTag)
+    
+    if gmsh.model.isInside(3,volTag,coords):
+        print("COM")
+        print(coords)
+        return coords
+    
+    # try center of bounding box
+    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,volTag)
+    coords = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
+
+    if gmsh.model.isInside(3,volTag,coords):
+        print("Bounding Box Center")
+        print(coords)
+        return coords
+
+    # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
+    z = (zmax+zmin)/2
+    grids = [10, 100, 1000]
+    for element in grids: # coarse grid to fine grid
+        x = linspace(xmin, xmax, element)
+        y = linspace(ymin, ymax, element)
+        print("Grid Search: "+str(element)+"x"+str(element))
+        for xi in x:
+            for yi in y:
+                coords = [xi, yi, z]
+                if gmsh.model.isInside(3,volTag,coords):
+                    print(coords)
+                    return coords
+
+
+
+
+    print("Point not found.")
+    exit(1)
+
+def linspace(a, b, n):
+    diff = (float(b) - a)/(n - 1)
+    return [diff * i + a  for i in range(1, n-1)] # Skips first and last
+    
