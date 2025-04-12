@@ -162,7 +162,7 @@ def mainFunc():
         #     insidePoints.append(config["insidePoint"][VolNames[i]])
         # else:
         #     insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
-        # volTags.append(element[1])
+        volTags.append(element[1])
         print(VolNames[i]+":")
         insidePoints.append(getLocationInMesh(gmsh,element[1]))
 
