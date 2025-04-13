@@ -53,7 +53,7 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/cellZone -add " + element + ";")
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/mode -add insidePoint;")
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/insidePoint -add \"(" + " ".join(str(x) for x in coordinate[i]) + ")\";")
-        print("commands for ", element)
+        # print("Generated commands for ", element)
         # remove used interface from list
         names.pop(j)
         pairs.pop(j)
@@ -145,7 +145,7 @@ def getStepSurfaces(fullPath):
     for iter, line in enumerate(surfaceLines):
         exp = re.compile(line + r"=OPEN_SHELL\(\'.*?\'\,\(([#\d+\,?]+)\)")
         tempList = re.findall(exp,StepText)
-        print(tempList[0])
+        # print(tempList[0])
         nSurfaces[iter] = tempList[0].count(",") +1 
     Names = validateNames(Names)
     return Names, nSurfaces
@@ -162,7 +162,7 @@ def getLocationInMesh(gmsh, volTag: int):
     coords = gmsh.model.occ.getCenterOfMass(3,volTag)
     
     if gmsh.model.isInside(3,volTag,coords):
-        print("COM")
+        print("Found by center of mass")
         print(coords)
         return coords
     
@@ -171,7 +171,7 @@ def getLocationInMesh(gmsh, volTag: int):
     coords = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
     if gmsh.model.isInside(3,volTag,coords):
-        print("Bounding Box Center")
+        print("Found by bounding box center")
         print(coords)
         return coords
 
@@ -186,6 +186,7 @@ def getLocationInMesh(gmsh, volTag: int):
             for yi in y:
                 coords = [xi, yi, z]
                 if gmsh.model.isInside(3,volTag,coords):
+                    print("Found by grid search")
                     print(coords)
                     return coords
 
