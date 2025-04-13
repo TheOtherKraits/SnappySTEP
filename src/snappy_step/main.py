@@ -51,7 +51,7 @@ def mainFunc():
         print("More than one step file found. Please remove or rename other files.")
         exit(1)
     else:
-        print(files[0]+" found.")
+        print(files[0]+" found")
 
     makeGroups = False
     # # Get manual face groups
@@ -88,21 +88,21 @@ def mainFunc():
     nVol = len(gmsh.model.getEntities(3))
 
     # Get surfaces
-    print("Getting Surface Names")
+    print("Reading Surface Names")
     # print(surfaces)
     snappyStepGroups, surfaceGroupLenghts = getStepSurfaces(stepFile)
     print("Found Surfaces:")
-    print(snappyStepGroups)
+    print(*snappyStepGroups)
     if len(snappyStepGroups)>0:
         makeGroups = True
         surfaces = gmsh.model.occ.getEntities(2)
-        print(surfaces)
+        # print(surfaces)
         # surfTags = []
         surfTagPairs = []
         # volSurfTagPairs = []
         for element in surfaces:
             adj = gmsh.model.get_adjacencies(element[0],element[1])
-            print(adj)
+            # print(adj)
             if adj[0] == []:
                 # surfTags.append(element[1])
                 surfTagPairs.append(element) # For surface coherence
@@ -115,7 +115,6 @@ def mainFunc():
                 # groupTags[iter].append(surfTags[count])
                 groupTags[iter].append(surfTagPairs[count][1])
                 count += 1 # increment counter
-        print(groupTags)
     snappyStepGroupsDict = dict(zip(snappyStepGroups, groupTags)) # Combine into dictionary for easy acces
 
     # Apply coherence to remove duplicate surfaces, edges, and points
@@ -127,11 +126,11 @@ def mainFunc():
     newTags, outDimTagsMap = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),surfTagPairs)
     gmsh.model.occ.synchronize()
 
-    print(len(outDimTagsMap[:][:]))
+    # print(len(outDimTagsMap[:][:]))
     if any(len(sublist) > 1 for sublist in outDimTagsMap):
         print("geometry tags of face groups changed. Support for this to be added later. Please fully imprint surfaces in CAD. Exiting")
         exit(1)
-    print(len(outDimTagsMap[1]))
+    # print(len(outDimTagsMap[1]))
     # Get Geometry Names
     print('Getting Names of Bodies')
     volumes = gmsh.model.getEntities(3)
@@ -139,12 +138,13 @@ def mainFunc():
         print("Coherence changed number of volumes. Check geometry. Exiting")
         exit(1)
     volNames = regexStepBodyNames(stepFile)
-    print("Found Volumes: ",volNames)
+    print("Found Volumes:")
+    print(*volNames)
     for i, element in enumerate(volNames): # loop through all Volume entries
         gmsh.model.setEntityName(3,volumes[i][1],element) # Adds names to gmsh entites
     print('Volume names assigned')
 
-    print("Getting pointInside")
+    print("Getting locationInMesh coordinates")
     # get inside points for each volume
     insidePoints = []
     volTags = [] # For quick access to tags without dims. Used in writeFoamDictionarySurf
@@ -244,6 +244,7 @@ def mainFunc():
 
     # Mesh
     # Use commands below to set mesh sizes
+    print("Generating Surface Mesh")
     gmsh.option.setNumber("Mesh.Algorithm",config["MESH"]["MeshAlgorithm"])
     gmsh.option.setNumber("Mesh.MeshSizeFactor",config["MESH"]["MeshSizeFactor"])
     gmsh.option.setNumber("Mesh.MeshSizeMin",config["MESH"]["MeshSizeMin"])
@@ -255,7 +256,9 @@ def mainFunc():
     gmsh.option.set_number("Mesh.StlOneSolidPerSurface",2)
 
     # export stl
-    gmsh.write(os.path.abspath(stepFile).split('.')[0]+".stl")
+    print("Writing ." + stepFile.split('.')[1]+".stl")
+    gmsh.write(os.path.relpath(stepFile).split('.')[0]+".stl")
+    print("Done.")
     #Clear all phsical groups
     gmsh.model.removePhysicalGroups([])
     #Create physical group for each interface volume pair
@@ -278,8 +281,11 @@ def mainFunc():
         volPair.append(interfaceVolPair[j])
         uniqueInterfaceNamesList.append(element)
         gmsh.model.addPhysicalGroup(2,patches,-1,element)
+        print("Writing " + os.path.join(geoPath,element+".stl"))
         gmsh.write(os.path.join(geoPath,element+".stl"))
+        print("Done.")
         gmsh.model.removePhysicalGroups([])
+    
 
     # interfaces in snappy step surfaces
     if makeGroups:
@@ -302,11 +308,14 @@ def mainFunc():
 
                     
             # gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
+            print("Writing " + os.path.join(geoPath,key+".stl"))
             gmsh.write(os.path.join(geoPath,key+".stl"))
+            print("Done.")
             gmsh.model.removePhysicalGroups([])
 
     # Write shell scripts
     # External walls
+    print("Writing foamDictionary commands.")
     commands.extend(writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
     commands.extend(writeRefinementRegions(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
     # Interfaces
@@ -324,7 +333,7 @@ def mainFunc():
     # Set external groups as type patch
     if makeGroups:
         commands.extend(setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
-
+    print("Done.")
     # Write mesh generation commands
     writeMeshCommands()
     writeSplitCommand(defaultZone)
@@ -337,7 +346,9 @@ def mainFunc():
     # See results
     if args.v:
         gmsh.fltk.run()
-
+    print("All files and scripts generated. Done.")
     # Last GMSH command
     gmsh.finalize()
+
+    
 
