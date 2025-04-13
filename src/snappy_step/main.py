@@ -97,14 +97,14 @@ def mainFunc():
         makeGroups = True
         surfaces = gmsh.model.occ.getEntities(2)
         print(surfaces)
-        surfTags = []
+        # surfTags = []
         surfTagPairs = []
         # volSurfTagPairs = []
-        for i, element in enumerate(surfaces):
+        for element in surfaces:
             adj = gmsh.model.get_adjacencies(element[0],element[1])
             print(adj)
             if adj[0] == []:
-                surfTags.append(element[1])
+                # surfTags.append(element[1])
                 surfTagPairs.append(element) # For surface coherence
             # else:
                 # volSurfTagPairs.append(element) # For surface coherence
@@ -112,7 +112,8 @@ def mainFunc():
         count = 0
         for iter, element in enumerate(surfaceGroupLenghts):
             for i in range(element):
-                groupTags[iter].append(surfTags[count])
+                # groupTags[iter].append(surfTags[count])
+                groupTags[iter].append(surfTagPairs[count][1])
                 count += 1 # increment counter
         print(groupTags)
     snappyStepGroupsDict = dict(zip(snappyStepGroups, groupTags)) # Combine into dictionary for easy acces
@@ -146,24 +147,24 @@ def mainFunc():
     if len(volumes) != nVol:
         print("Coherence changed number of volumes. Check geometry. Exiting")
         exit(1)
-    VolNames = regexStepBodyNames(stepFile)
-    print("Found Volumes: ",VolNames)
-    for i, element in enumerate(VolNames): # loop through all Volume entries
+    volNames = regexStepBodyNames(stepFile)
+    print("Found Volumes: ",volNames)
+    for i, element in enumerate(volNames): # loop through all Volume entries
         gmsh.model.setEntityName(3,volumes[i][1],element) # Adds names to gmsh entites
     print('Volume names assigned')
 
     print("Getting pointInside")
     # get inside points for each volume
     insidePoints = []
-    volTags = []
+    volTags = [] # For quick access to tags without dims. Used in writeFoamDictionarySurf
     for i, element in enumerate(volumes):
 
-        # if VolNames[i] in config["insidePoint"]:
-        #     insidePoints.append(config["insidePoint"][VolNames[i]])
+        # if volNames[i] in config["insidePoint"]:
+        #     insidePoints.append(config["insidePoint"][volNames[i]])
         # else:
         #     insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
         volTags.append(element[1])
-        print(VolNames[i]+":")
+        print(volNames[i]+":")
         insidePoints.append(getLocationInMesh(gmsh,element[1]))
 
         
@@ -178,13 +179,13 @@ def mainFunc():
     print('Identifying contacts')
 
     geoBounds = gmsh.model.getBoundary(volumes,False,False,False)
-    Interfaces = {x for x in geoBounds if geoBounds.count(x) > 1} # Checks each index for more than one item the list, if so added to the set
-    print(len(Interfaces), "contacting face(s) found.")
+    interfaces = {x for x in geoBounds if geoBounds.count(x) > 1} # Checks each index for more than one item the list, if so added to the set
+    print(len(interfaces), "contacting face(s) found.")
     # get volumes of interfaces
     interfaceVolPair = [] # List of dim, tag pairs of volume pairs of each interface
     interfaceNames = []
     interfaceList = []
-    for i, element in enumerate(Interfaces):
+    for element in interfaces:
         adj = gmsh.model.getAdjacencies(element[0],element[1])
         interfaceVolPair.append([adj[0][0],adj[0][1]])
         namePair = [gmsh.model.getEntityName(3,adj[0][0]), gmsh.model.getEntityName(3,adj[0][1])] # Gets names of both volumes
@@ -216,14 +217,15 @@ def mainFunc():
         isExternal = []
         for j, face in enumerate(bounds):
             # Find surfaces that bound more than one volume
-            if face in Interfaces:
+            if face in interfaces:
                 isExternal.append(False)
             else:
                 isExternal.append(True)
         if any(isExternal):
             externalList = []
             for k, face in enumerate(bounds):
-                if face[1] in surfTags and isExternal[k]:
+                # if face[1] in surfTags and isExternal[k]:
+                if face[1] in [surfTag[1] for surfTag in surfTagPairs] and isExternal[k]:
                     external_patches.append(face[1])
                 elif isExternal[k]:
                     externalList.append(face[1]) # Gets face tag
@@ -233,8 +235,8 @@ def mainFunc():
                     # counter = counter + 1        
         
         if anyExternal: # Don't need to make entry in dictionary if there are no external surfaces for this volume
-            external_regions.append(VolNames[i]+"_wall") # This will be used in the foamDict script
-            gmsh.model.addPhysicalGroup(2,externalList,-1,VolNames[i]+"_wall")
+            external_regions.append(volNames[i]+"_wall") # This will be used in the foamDict script
+            gmsh.model.addPhysicalGroup(2,externalList,-1,volNames[i]+"_wall")
 
     # Check that all patches are either internal or external
     if makeGroups:
@@ -301,7 +303,7 @@ def mainFunc():
     # interfaces not in snappy step surfaces
     volPair = [] # This will be used in the foamDict script
     uniqueInterfaceNamesList = []
-    for i, element in enumerate(uniqueInterfaceNames):
+    for element in uniqueInterfaceNames:
         patches = []
         for j, name in enumerate(interfaceNames):
             if interfaceList[j][1] in patch_tags:
@@ -347,13 +349,14 @@ def mainFunc():
     commands.extend(writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
     commands.extend(writeRefinementRegions(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
     # Interfaces
-    for i, element in enumerate(uniqueInterfaceNamesList):
+    # for i, element in enumerate(uniqueInterfaceNamesList):
+    for element in uniqueInterfaceNamesList:
         commands.extend(writeFoamDictionaryGeo(element,[])) # pass empty region list since each interface only has the single region
         commands.extend(writeRefinementRegions(element,[]))
         #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),VolNames,volTags,insidePoints)
+    surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),volNames,volTags,insidePoints)
     defaultZone = surfReturn[1]
     commands.extend(surfReturn[0])
 
