@@ -118,15 +118,6 @@ def mainFunc():
         print(groupTags)
     snappyStepGroupsDict = dict(zip(snappyStepGroups, groupTags)) # Combine into dictionary for easy acces
 
-
-    # for i, element in enumerate(surfaces):
-    #     print(gmsh.model.get_adjacencies(element[0],element[1]))
-    # gmsh.option.set_number("Geometry.Surfaces",1)
-    # gmsh.option.set_number("Geometry.SurfaceLabels",1)
-    # gmsh.model.occ.synchronize()
-    # gmsh.fltk.run()
-    # exit(1)
-
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
     gmsh.model.occ.fragment([],[])
@@ -166,14 +157,6 @@ def mainFunc():
         volTags.append(element[1])
         print(volNames[i]+":")
         insidePoints.append(getLocationInMesh(gmsh,element[1]))
-
-        
-        # see if isInside can do check on points
-        # Below was attempt to use first face and offset to get point inside. Could not figure out how to get a point on the center of a face
-        # faces = gmsh.model.get_adjacencies(2,element[1])
-        # coord = gmsh.model.get
-        # param = gmsh.model.getParametrization(2,faces[1][0],coord)# first element of downard adjacency
-        # normal = gmsh.model.getNormal()
     
 
     print('Identifying contacts')
@@ -258,28 +241,6 @@ def mainFunc():
                 setPatchList.append(key)
             else:
                 continue
-    # print(gmsh.model.getPhysicalGroups(-1))
-    # print(gmsh.model.getPhysicalName(2,7))
-        # if makeGroups:
-        # for key in snappyStepGroups["surfaces"]:
-        #     res = set(snappyStepGroups["surfaces"][key]).issubset(external_patches)
-        #     if res:
-        #         continue
-        #     else:
-        #         if any(x in snappyStepGroups["surfaces"][key] for x in external_patches):
-        #             print("Mismatched patch groups found. Exiting")
-        #             exit(1)
-
-        # # Add external patches to physical groups
-        # setPatchList = []
-        # for key in snappyStepGroups["surfaces"]:
-        #     if snappyStepGroups["surfaces"][key][0] in external_patches:
-        #         gmsh.model.addPhysicalGroup(2,snappyStepGroups["surfaces"][key],-1,key)
-        #         external_regions.append(key)
-        #         setPatchList.append(key)
-        #     else:
-        #         continue
-
 
     # Mesh
     # Use commands below to set mesh sizes
@@ -380,6 +341,3 @@ def mainFunc():
     # Last GMSH command
     gmsh.finalize()
 
-#if __name__ == '__main__':
-#    mainFunc()
-# mainFunc()
