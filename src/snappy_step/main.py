@@ -149,14 +149,13 @@ def mainFunc():
     insidePoints = []
     volTags = [] # For quick access to tags without dims. Used in writeFoamDictionarySurf
     for i, element in enumerate(volumes):
-
-        # if volNames[i] in config["insidePoint"]:
-        #     insidePoints.append(config["insidePoint"][volNames[i]])
-        # else:
-        #     insidePoints.append(gmsh.model.occ.getCenterOfMass(3,element[1])) # This gets center of mass. will not work for objects where COM is not inside
-        volTags.append(element[1])
         print(volNames[i]+":")
-        insidePoints.append(getLocationInMesh(gmsh,element[1]))
+        if volNames[i] in config["insidePoint"]:
+            insidePoints.append(config["insidePoint"][volNames[i]])
+            print("Using coordinates in config file.")
+        else:
+            volTags.append(element[1])
+            insidePoints.append(getLocationInMesh(gmsh,element[1]))
     
 
     print('Identifying contacts')
@@ -346,7 +345,7 @@ def mainFunc():
     # See results
     if args.v:
         gmsh.fltk.run()
-    print("All files and scripts generated. Done.")
+    print("All geometry files and scripts generated. Done.")
     # Last GMSH command
     gmsh.finalize()
 
