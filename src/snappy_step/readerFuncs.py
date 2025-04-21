@@ -3,16 +3,53 @@ import re
 
 def regexStepBodyNames(fullPath): # Just regex all text?
     with open(fullPath, 'r') as StepFile:
-        bodyNames = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", StepFile.read())
+        stepText = StepFile.read()
+        bodyNames = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", stepText)
         bodyNames = validateNames(bodyNames)
         return bodyNames
 
 def regexStepShellNames(fullPath): # Just regex all text?
     with open(fullPath, 'r') as StepFile:
-        shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", StepFile.read())
+        stepText = StepFile.read()
+        shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", stepText)
         shellNames = validateNames(shellNames)
         print(shellNames)
         return shellNames
+    
+def getVolumeNames(gmsh):
+    ent = gmsh.model.getEntities(3)
+    names = []
+    for e in ent:
+        n = gmsh.model.getEntityName(e[0], e[1])
+        names.append(n.split("/")[-1]) # Return substring after last slash
+    return names, ent
+
+def getSurfaceNames(gmsh):
+    ent = gmsh.model.getEntities(2)
+    names = []
+    tags = []
+    for e in ent:
+        n = gmsh.model.getEntityName(e[0], e[1])
+        name = n.split("/")[-1]
+        if not name:
+            continue
+        elif name in names:
+            idx = names.index(name)
+            tags[idx].append(e)
+        else:
+            names.append(name) # Return substring after last slash
+            tags.append([e])
+    return names, tags
+
+
+
+def getStepType(stepText): # Probably won't need this
+    volumes = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", stepText)
+    if volumes(0) == "":
+        volumes = re.findall(r"PRODUCT\(\'(.*?)\'\,\'(?:.*?)\'\,\'(?:.*?)\'\,\(#", stepText)
+
+    
+
 
 def writeCommands(fileName: str, commands: list):
     with open(fileName, 'w') as script:

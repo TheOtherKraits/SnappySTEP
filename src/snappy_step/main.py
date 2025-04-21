@@ -78,14 +78,38 @@ def mainFunc():
     gmsh.initialize()
     gmsh.option.setString('Geometry.OCCTargetUnit', 'M') # Set meters as working unit
 
+    # Testing import option
+    # gmsh.option.setNumber('Geometry.OCCImportLabels',2)
+
     # retrive geometry
     print('Reading geometry')
     stepFile = os.path.join(geoPath, files[0])
-    gmsh.model.occ.importShapes(stepFile,False) # Optional argument allows for lower dimension entities to be imported
+    # gmsh.model.occ.importShapes(stepFile,False) # Optional argument allows for lower dimension entities to be imported
+    gmsh.model.occ.importShapes(stepFile)
     gmsh.model.occ.synchronize()
 
     # How many volumes before coherence
     nVol = len(gmsh.model.getEntities(3))
+
+    # Testing of native reading of names
+    # This to be implemented
+    # ent =gmsh.model.getEntities(3)
+    # for e in ent:
+    #     n = gmsh.model.getEntityName(e[0], e[1])
+    #     print(n)
+    volNames2, volTags2 = getVolumeNames(gmsh)
+    print(volNames2)
+
+    print("Surfaces with names")
+    # ent =gmsh.model.getEntities(2)
+        
+    # for e in ent:
+    #     n = gmsh.model.getEntityName(e[0], e[1])
+    #     if n:
+    #         print(n)
+    surfNames2, surfTags2 = getSurfaceNames(gmsh)
+    print(surfNames2)
+    print(surfTags2)
 
     # Get surfaces
     print("Reading Surface Names")
