@@ -22,12 +22,14 @@ def getVolumeNames(gmsh):
     for e in ent:
         n = gmsh.model.getEntityName(e[0], e[1])
         names.append(n.split("/")[-1]) # Return substring after last slash
+        names = validateNames(names)
     return names, ent
 
 def getSurfaceNames(gmsh):
     ent = gmsh.model.getEntities(2)
     names = []
     tags = []
+    patch_tags = []
     for e in ent:
         n = gmsh.model.getEntityName(e[0], e[1])
         name = n.split("/")[-1]
@@ -36,10 +38,13 @@ def getSurfaceNames(gmsh):
         elif name in names:
             idx = names.index(name)
             tags[idx].append(e)
+            patch_tags.append(e[1])
         else:
             names.append(name) # Return substring after last slash
             tags.append([e])
-    return names, tags
+            patch_tags.append(e[1])
+    names = validateNames(names)
+    return names, tags, patch_tags
 
 
 
@@ -226,9 +231,6 @@ def getLocationInMesh(gmsh, volTag: int):
                     print("Found by grid search")
                     print(coords)
                     return coords
-
-
-
 
     print("Point not found.")
     exit(1)
