@@ -1,5 +1,5 @@
-[MESH] # GMSH surface mesh options
-MeshSizeMax = 1e22
+[MESH]
+MeshSizeMax = .5
 MeshSizeMin = 0
 MeshSizeFactor = 1
 MeshSizeFromCurvature = 0
@@ -8,9 +8,11 @@ MeshAlgorithm = 6
 # GMSH default is 6: Frontal-Dlaunay
 
 [GEOMETRY] # Not implimented yet
-PreProcessSequence = ["none"]
-# Optionally enter sequence of geometry processing steps. See Gmsh documentation for details. Seperate entires in array by comma.
-# fixDegenerated fixSmallEdges fixSmallFaces sewFaces makeSolids defeature
 Scaling = 1
 # Geometry.OCCScaling
-InsidePointOffset = "default"
+
+#[insidePoint] # if volume is not listed, a suitible point will be determined
+#obj = [0.01, 0.190, 0.05]
+
+[sHM]
+multiRegionFeatureSnap = true
