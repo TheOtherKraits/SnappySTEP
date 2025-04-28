@@ -175,3 +175,6 @@ snappyHexMeshDict
 #GMSH
 *.geo
 *.msh
+
+#Other
+*copyTestCases.sh
