@@ -178,3 +178,5 @@ snappyHexMeshDict
 
 #Other
 *copyTestCases.sh
+snappyStepGenerateMesh.sh
+snappyStepSplitMeshRegions.sh
