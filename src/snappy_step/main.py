@@ -68,15 +68,26 @@ def mainFunc():
     print('Reading geometry')
     stepFile = os.path.join(geoPath, files[0])
     # gmsh.model.occ.importShapes(stepFile,False) # Optional argument allows for lower dimension entities to be imported
-    gmsh.model.occ.importShapes(stepFile)
+    gmsh.model.occ.importShapes(stepFile,False)
     gmsh.model.occ.synchronize()
 
     # How many volumes before coherence
     nVol = len(gmsh.model.getEntities(3))
 
-    print("Surfaces with names")
-    # ent =gmsh.model.getEntities(2)
-        
+    # Apply coherence to remove duplicate surfaces, edges, and points
+    print('Imprinting features and removing duplicate faces')
+    gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
+    gmsh.model.occ.removeAllDuplicates()
+    gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
+    gmsh.model.occ.removeAllDuplicates()
+    gmsh.model.occ.synchronize()
+
+    # Check coherence results
+    volumes = gmsh.model.getEntities(3)
+    if len(volumes) != nVol:
+        print("Coherence changed number of volumes. Check geometry. Exiting")
+        exit(1)
+
     # Get Geometry Names
     print('Getting Names of Bodies')
     volNames, volTags = getVolumeNames(gmsh)
@@ -85,10 +96,9 @@ def mainFunc():
 
 
     # Get surfaces
-    print("Reading Surface Names")
+    print("Getting Surface Names")
     surfNames, surfTags, patch_tags = getSurfaceNames(gmsh)
-
-
+    print("Found Surfaces:")
 
     if len(surfNames)>0:
         print("Found Surfaces:")
@@ -96,23 +106,13 @@ def mainFunc():
         makeGroups = True
         snappyStepGroupsDict = dict(zip(surfNames, surfTags)) # Combine into dictionary for easy acces
 
- 
-    # Apply coherence to remove duplicate surfaces, edges, and points
-    print('Imprinting features and removing duplicate faces')
-    newTags, outDimTagsMap = gmsh.model.occ.fragment([],[])
-    gmsh.model.occ.removeAllDuplicates()
-    gmsh.model.occ.synchronize()
   
     # print(len(outDimTagsMap[:][:]))
-    if any(len(sublist) > 1 for sublist in outDimTagsMap):
-        print("geometry tags of face groups changed. Support for this to be added later. Please fully imprint surfaces in CAD. Exiting")
-        exit(1)
+    # if any(len(sublist) > 1 for sublist in outDimTagsMap):
+    #     print("geometry tags of face groups changed. Support for this to be added later. Please fully imprint surfaces in CAD. Exiting")
+    #     exit(1)
 
-    # Check coherence results
-    volumes = gmsh.model.getEntities(3)
-    if len(volumes) != nVol:
-        print("Coherence changed number of volumes. Check geometry. Exiting")
-        exit(1)
+
 
     # Assign surface names
     for iter, group in enumerate(surfTags):
