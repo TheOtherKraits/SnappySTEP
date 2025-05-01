@@ -27,7 +27,11 @@ def mainFunc():
 
     # Read Config
     with open("./system/snappyStep.toml", "rb") as f:
-        config = tomllib.load(f)
+        try:
+            config = tomllib.load(f)
+        except:
+            print("There seems to be a problem with snappyStep.toml. Please check for format errors. Exiting.")
+            exit(1)
 
     if "insidePoint" in config:  
         print("Using insidePoints defined in config")
@@ -84,6 +88,8 @@ def mainFunc():
     print("Reading Surface Names")
     surfNames, surfTags, patch_tags = getSurfaceNames(gmsh)
 
+
+
     if len(surfNames)>0:
         print("Found Surfaces:")
         print(*surfNames)
@@ -107,6 +113,11 @@ def mainFunc():
     if len(volumes) != nVol:
         print("Coherence changed number of volumes. Check geometry. Exiting")
         exit(1)
+
+    # Assign surface names
+    for iter, group in enumerate(surfTags):
+        for surf in group:
+            gmsh.model.setEntityName(2,surf[1],surfNames[iter])
 
     for i, element in enumerate(volNames): # loop through all Volume entries
         gmsh.model.setEntityName(3,volTags[i][1],element) # Adds names to gmsh entites
@@ -142,13 +153,15 @@ def mainFunc():
 
     # Setting for viewing mesh
     gmsh.option.set_number("Geometry.VolumeLabels",1)
-    gmsh.model.occ.synchronize()
+    gmsh.option.set_number("Geometry.LabelType",3)
+    # gmsh.model.occ.synchronize()
 
 # optionally view faces and volumes and exit before mesh
     if args.vf:
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
-        gmsh.model.occ.synchronize()
+        gmsh.option.set_number("Geometry.LabelType",3)
+        # gmsh.model.occ.synchronize()
         gmsh.fltk.run()
         exit(1)
 
