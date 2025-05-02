@@ -1,5 +1,5 @@
 [MESH]
-MeshSizeMax = .5
+MeshSizeMax = 0.5
 MeshSizeMin = 0
 MeshSizeFactor = 1
 MeshSizeFromCurvature = 0

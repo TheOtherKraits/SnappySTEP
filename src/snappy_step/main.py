@@ -67,7 +67,6 @@ def mainFunc():
     # retrive geometry
     print('Reading geometry')
     stepFile = os.path.join(geoPath, files[0])
-    # gmsh.model.occ.importShapes(stepFile,False) # Optional argument allows for lower dimension entities to be imported
     gmsh.model.occ.importShapes(stepFile,False)
     gmsh.model.occ.synchronize()
 
@@ -76,8 +75,9 @@ def mainFunc():
 
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
-    gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
-    gmsh.model.occ.removeAllDuplicates()
+    if nVol > 1:
+        gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
+        gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
@@ -98,21 +98,17 @@ def mainFunc():
     # Get surfaces
     print("Getting Surface Names")
     surfNames, surfTags, patch_tags = getSurfaceNames(gmsh)
-    print("Found Surfaces:")
 
     if len(surfNames)>0:
         print("Found Surfaces:")
         print(*surfNames)
         makeGroups = True
         snappyStepGroupsDict = dict(zip(surfNames, surfTags)) # Combine into dictionary for easy acces
-
   
     # print(len(outDimTagsMap[:][:]))
     # if any(len(sublist) > 1 for sublist in outDimTagsMap):
     #     print("geometry tags of face groups changed. Support for this to be added later. Please fully imprint surfaces in CAD. Exiting")
     #     exit(1)
-
-
 
     # Assign surface names
     for iter, group in enumerate(surfTags):
