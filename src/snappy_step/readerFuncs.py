@@ -47,15 +47,6 @@ def getSurfaceNames(gmsh):
     return names, tags, patch_tags
 
 
-
-def getStepType(stepText): # Probably won't need this
-    volumes = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", stepText)
-    if volumes(0) == "":
-        volumes = re.findall(r"PRODUCT\(\'(.*?)\'\,\'(?:.*?)\'\,\'(?:.*?)\'\,\(#", stepText)
-
-    
-
-
 def writeCommands(fileName: str, commands: list):
     with open(fileName, 'w') as script:
         script.write("\n".join(commands))
@@ -122,7 +113,6 @@ def writeRefinementRegions(name: str, regions: list[str]) -> None:
     return commands
 
 
-
 def writeMeshCommands():
     commands = []
     commands.append("snappyHexMeshConfig -explicitFeatures")
@@ -142,17 +132,6 @@ def writeSplitCommand(defaultZone: str):
     fileName = "snappyStepSplitMeshRegions.sh"
     writeCommands(fileName,commands)
  
-
-def writeFoamDictionaryInterfaceGroups(interfacePatchNames: list, interfaceList: list, faceSets: dict):
-    # This does not work due to cell zone splitting. Try using changeDictionary
-    commands = []
-    for iter, patch in enumerate(interfacePatchNames):
-        for key in faceSets:
-            if interfaceList[iter][1] in faceSets[key]:
-                commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + patch + "/patchInfo/inGroups -add \"(" + key +")\";")
-                continue
-    return commands
-
 
 def writeFoamDictionaryExternalGroups(external_regions: list, external_tag: list, faceSets: dict, name):
     commands = []
@@ -238,4 +217,13 @@ def getLocationInMesh(gmsh, volTag: int):
 def linspace(a, b, n):
     diff = (float(b) - a)/(n - 1)
     return [diff * i + a  for i in range(1, n-1)] # Skips first and last
-    
+
+def removeFaceLabelsOnVolumes(gmsh):
+    faces = gmsh.model.getEntities(2)
+    for face in faces:
+        adj = gmsh.model.getAdjacencies(face[0],face[1])
+        if adj[0] != []:
+            name = gmsh.model.getEntityName(face[0],face[1])
+            if name != "":
+                gmsh.model.removeEntityName(name)
+                print("removed "+ name)

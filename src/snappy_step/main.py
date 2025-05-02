@@ -73,6 +73,9 @@ def mainFunc():
     # How many volumes before coherence
     nVol = len(gmsh.model.getEntities(3))
 
+    # Remove extra names face names. Prevent issues when tags change.
+    removeFaceLabelsOnVolumes(gmsh)
+
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
     if nVol > 1:
@@ -147,17 +150,13 @@ def mainFunc():
         interfaceNames.append(namePair[0] + "_to_" + namePair[1]) #Adds name to list
         interfaceList.append(element) # List rather than set for use later
 
-    # Setting for viewing mesh
-    gmsh.option.set_number("Geometry.VolumeLabels",1)
-    gmsh.option.set_number("Geometry.LabelType",3)
-    # gmsh.model.occ.synchronize()
-
 # optionally view faces and volumes and exit before mesh
     if args.vf:
+        gmsh.option.set_number("Geometry.VolumeLabels",1)
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
         gmsh.option.set_number("Geometry.LabelType",3)
-        # gmsh.model.occ.synchronize()
+        print("gmsh window open.")
         gmsh.fltk.run()
         exit(1)
 
@@ -317,6 +316,11 @@ def mainFunc():
 
     # See results
     if args.v:
+        gmsh.option.set_number("Geometry.VolumeLabels",1)
+        gmsh.option.set_number("Geometry.Surfaces",1)
+        gmsh.option.set_number("Geometry.SurfaceLabels",1)
+        gmsh.option.set_number("Geometry.LabelType",3)
+        print("gmsh window open.")
         gmsh.fltk.run()
     print("All geometry files and scripts generated. Done.")
     # Last GMSH command
