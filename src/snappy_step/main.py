@@ -247,11 +247,12 @@ def mainFunc():
                 continue
             elif name == element:
                 patches.append(interfaceList[j][1]) # This will be used in the foamDict script
+                idx = j
             else:
                continue
         if not patches: # skip adding to physical group and lists if patch list is empty
             continue
-        volPair.append(interfaceVolPair[j])
+        volPair.append(interfaceVolPair[idx])
         uniqueInterfaceNamesList.append(element)
         gmsh.model.addPhysicalGroup(2,patches,-1,element)
         print("Writing " + os.path.join(geoPath,element+".stl"))
