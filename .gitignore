@@ -161,6 +161,7 @@ launch.json
 #Outputs
 *.stl
 snappyStep.sh
+*.vtk
 
 #OpenFOAM
 
@@ -180,3 +181,6 @@ snappyHexMeshDict
 *copyTestCases.sh
 snappyStepGenerateMesh.sh
 snappyStepSplitMeshRegions.sh
+
+#FreeCAD
+*.FCBak
