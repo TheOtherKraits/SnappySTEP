@@ -165,6 +165,7 @@ def mainFunc():
 
     external_regions = [] # This will be used in the foamDict script
     external_patches = []
+    patches_for_edge_mesh = []
     for i, element in enumerate(volumes):
         anyExternal = False # Don't need to make entry in dictionary if there are no external surfaces for this volume
         bounds = gmsh.model.getBoundary([element],True,False,False)
@@ -193,6 +194,7 @@ def mainFunc():
         if anyExternal: # Don't need to make entry in dictionary if there are no external surfaces for this volume
             external_regions.append(volNames[i]+"_wall") # This will be used in the foamDict script
             gmsh.model.addPhysicalGroup(2,externalList,-1,volNames[i]+"_wall")
+            patches_for_edge_mesh.extend(externalList)
 
     # Check that all patches are either internal or external
     if makeGroups:
@@ -212,6 +214,7 @@ def mainFunc():
                 gmsh.model.addPhysicalGroup(2,[el[1] for el in snappyStepGroupsDict[key]],-1,key)
                 external_regions.append(key)
                 setPatchList.append(key)
+                patches_for_edge_mesh.extend([el[1] for el in snappyStepGroupsDict[key]])
             else:
                 continue
 
@@ -234,6 +237,8 @@ def mainFunc():
     print("Done.")
     #Clear all phsical groups
     gmsh.model.removePhysicalGroups([])
+    # Write corresponding edge mesh
+    writeEdgeMesh(gmsh,patches_for_edge_mesh,os.path.basename(stepFile).split('.')[0],geoPath)
     #Create physical group for each interface volume pair
     uniqueInterfaceNames = set(interfaceNames)
     
@@ -259,6 +264,7 @@ def mainFunc():
         gmsh.write(os.path.join(geoPath,element+".stl"))
         print("Done.")
         gmsh.model.removePhysicalGroups([])
+        writeEdgeMesh(gmsh, patches, element, geoPath)
     
 
     # interfaces in snappy step surfaces
@@ -266,6 +272,7 @@ def mainFunc():
         for key in snappyStepGroupsDict:
             if snappyStepGroupsDict[key][0][1] not in external_patches:
                 gmsh.model.addPhysicalGroup(2,[el[1] for el in snappyStepGroupsDict[key]],-1,key)
+                patches_for_edge_mesh = [el[1] for el in snappyStepGroupsDict[key]]
             else:
                 continue
             uniqueInterfaceNamesList.append(key)
@@ -284,6 +291,8 @@ def mainFunc():
             gmsh.write(os.path.join(geoPath,key+".stl"))
             print("Done.")
             gmsh.model.removePhysicalGroups([])
+            # Write corresponding edge mesh
+            writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geoPath)
 
     # Write shell scripts
     # External walls

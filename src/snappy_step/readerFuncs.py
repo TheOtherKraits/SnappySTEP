@@ -1,4 +1,5 @@
 import re
+import os
 
 
 def regexStepBodyNames(fullPath): # Just regex all text?
@@ -227,3 +228,12 @@ def removeFaceLabelsOnVolumes(gmsh):
             if name != "":
                 gmsh.model.removeEntityName(name)
                 print("removed "+ name)
+def writeEdgeMesh(gmsh, surfaces: list, name: str, geoPath: str):
+    edges = set() # using set to avoid duplicates
+    for face in surfaces:
+        edges.update(gmsh.model.getAdjacencies(2,face)[1]) # add edge tags to set
+    gmsh.model.addPhysicalGroup(1,edges,-1,name)
+    print("Writing " + os.path.join(geoPath,name+"_edge.vtk"))
+    gmsh.write(os.path.join(geoPath,name+"_edge.vtk"))
+    print("Done.")
+    gmsh.model.removePhysicalGroups([])
