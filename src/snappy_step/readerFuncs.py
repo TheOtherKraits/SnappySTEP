@@ -52,6 +52,20 @@ def writeCommands(fileName: str, commands: list):
     with open(fileName, 'w') as script:
         script.write("\n".join(commands))
 
+def writeFoamDictionaryEdge(names: list[str]):
+    commands = [] # initialize list
+    sub_commands = []
+    commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/explicitFeatureSnap -set on;")
+    commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/implicitFeatureSnap -set off;")
+    # sub_commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/features -set ")
+    # sub_commands.append("(")
+    for name in names:
+        commands.append("sed -i -e 's/"+name+".eMesh/"+"edge\/"+name+"_edge.vtk"+"/g' system/snappyHexMeshDict")
+        # sub_commands.append(" { file \""+"edges/"+name+"_edge.vtk;\" level 1; }")
+    # sub_commands.append(" )")
+    # commands.append("".join(sub_commands))
+    return commands
+
 def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
     commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -remove") # clear any existing regions
@@ -119,7 +133,7 @@ def writeMeshCommands():
     commands.append("snappyHexMeshConfig -explicitFeatures")
     commands.append("blockMesh")
     commands.append("./snappyStep.sh")
-    commands.append("surfaceFeatures")
+    # commands.append("surfaceFeatures")
     commands.append("snappyHexMesh -overwrite")
     commands.append("./snappyStepSplitMeshRegions.sh")
     commands.append("checkMesh")
@@ -234,6 +248,8 @@ def writeEdgeMesh(gmsh, surfaces: list, name: str, geoPath: str):
         edges.update(gmsh.model.getAdjacencies(2,face)[1]) # add edge tags to set
     gmsh.model.addPhysicalGroup(1,edges,-1,name)
     print("Writing " + os.path.join(geoPath,name+"_edge.vtk"))
-    gmsh.write(os.path.join(geoPath,name+"_edge.vtk"))
+    if not os.path.exists(os.path.join(geoPath,"edges")):
+        os.makedirs(os.path.join(geoPath,"edges"))
+    gmsh.write(os.path.join(geoPath,"edges",name+"_edge.vtk"))
     print("Done.")
     gmsh.model.removePhysicalGroups([])

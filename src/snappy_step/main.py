@@ -315,6 +315,8 @@ def mainFunc():
     if makeGroups:
         commands.extend(setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
     print("Done.")
+
+    commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
     # Write mesh generation commands
     writeMeshCommands()
     writeSplitCommand(defaultZone)
