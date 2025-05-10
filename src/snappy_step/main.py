@@ -11,6 +11,7 @@ def mainFunc():
     parser = argparse.ArgumentParser(description='Prepare STEP geometry for SnappyHexMesh using GMSH')
     parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
     parser.add_argument('-vf', action='store_true',help='Display faces and labels. Exits without generating mesh') # view faces after coherence and don't generate mesh
+    parser.add_argument('-file',help='Specify filename if multiple step files present in geometry directory')
 
     args = parser.parse_args()
     
@@ -52,8 +53,16 @@ def mainFunc():
         print("No step file found in constant/geometry directory")
         exit(1)
     elif len(files) > 1:
-        print("More than one step file found. Please remove or rename other files.")
-        exit(1)
+        if args.file is None:
+            print("More than one step file found. Please remove or rename other files, or specify the file to use with the -file arguemnt. Exiting.")
+            exit(1)
+        else:
+            if os.path.isfile(os.path.join(geoPath,args.file)):
+                files = []
+                files.append(args.file)
+            else:
+                print(args.file + " is not a file. Exiting.")
+                exit(1)
     else:
         print(files[0]+" found")
 
