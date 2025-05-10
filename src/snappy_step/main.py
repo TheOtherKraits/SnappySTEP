@@ -192,8 +192,8 @@ def mainFunc():
                     # counter = counter + 1        
         
         if anyExternal: # Don't need to make entry in dictionary if there are no external surfaces for this volume
-            external_regions.append(volNames[i]+"_wall") # This will be used in the foamDict script
-            gmsh.model.addPhysicalGroup(2,externalList,-1,volNames[i]+"_wall")
+            external_regions.append(volNames[i]+"_default") # This will be used in the foamDict script
+            gmsh.model.addPhysicalGroup(2,externalList,-1,volNames[i]+"_default")
             patches_for_edge_mesh.extend(externalList)
 
     # Check that all patches are either internal or external
