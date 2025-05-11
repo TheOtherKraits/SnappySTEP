@@ -45,27 +45,34 @@ def mainFunc():
 
 
     # Find geometry files
-    for file in os.listdir(geoPath):
-        if file.endswith(tuple(ext)):
-            files.append(file)
+    if args.file is None:
+        for file in os.listdir(geoPath):
+            if file.endswith(tuple(ext)):
+                files.append(file)
     
-    if len(files) == 0:
-        print("No step file found in constant/geometry directory")
-        exit(1)
-    elif len(files) > 1:
-        if args.file is None:
-            print("More than one step file found. Please remove or rename other files, or specify the file to use with the -file arguemnt. Exiting.")
+        if len(files) == 0:
+            print("No step file found in constant/geometry directory. Exiting.")
             exit(1)
+        elif len(files) > 1:
+            print("More than one step file found. Please remove or rename other files, or specify the file to read with the -file arguemnt. Exiting.")
+            exit(1)   
         else:
-            if os.path.isfile(os.path.join(geoPath,args.file)):
-                files = []
-                files.append(args.file)
+            print(files[0]+" found")
+            stepFile = os.path.join(geoPath, files[0])
+    else:
+        if os.path.isabs(args.file):
+            if os.path.isfile(args.file):
+                stepFile = args.file
             else:
                 print(args.file + " is not a file. Exiting.")
                 exit(1)
-    else:
-        print(files[0]+" found")
-
+        else:
+            if os.path.isfile(os.path.join(geoPath,args.file)):
+                 stepFile = os.path.join(geoPath,args.file)
+            else:
+                print(args.file + " is not a file. Exiting.")
+                exit(1)
+        
     makeGroups = False
     patch_tags = []    
 
@@ -75,7 +82,6 @@ def mainFunc():
 
     # retrive geometry
     print('Reading geometry')
-    stepFile = os.path.join(geoPath, files[0])
     gmsh.model.occ.importShapes(stepFile,False)
     gmsh.model.occ.synchronize()
 
