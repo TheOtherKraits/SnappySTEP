@@ -253,7 +253,8 @@ def mainFunc():
     #Clear all phsical groups
     gmsh.model.removePhysicalGroups([])
     # Write corresponding edge mesh
-    writeEdgeMesh(gmsh,patches_for_edge_mesh,os.path.basename(stepFile).split('.')[0],geoPath)
+    if config["MESH"]["EdgeMesh"]:
+        writeEdgeMesh(gmsh,patches_for_edge_mesh,os.path.basename(stepFile).split('.')[0],geoPath)
     #Create physical group for each interface volume pair
     uniqueInterfaceNames = set(interfaceNames)
     
@@ -279,7 +280,8 @@ def mainFunc():
         gmsh.write(os.path.join(geoPath,element+".stl"))
         print("Done.")
         gmsh.model.removePhysicalGroups([])
-        writeEdgeMesh(gmsh, patches, element, geoPath)
+        if config["MESH"]["EdgeMesh"]:
+            writeEdgeMesh(gmsh, patches, element, geoPath)
     
 
     # interfaces in snappy step surfaces
@@ -307,7 +309,8 @@ def mainFunc():
             print("Done.")
             gmsh.model.removePhysicalGroups([])
             # Write corresponding edge mesh
-            writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geoPath)
+            if config["MESH"]["EdgeMesh"]:
+                writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geoPath)
 
     # Write shell scripts
     # External walls
@@ -330,8 +333,8 @@ def mainFunc():
     if makeGroups:
         commands.extend(setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
     print("Done.")
-
-    commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
+    if config["MESH"]["EdgeMesh"]:
+        commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
     # Write mesh generation commands
     writeMeshCommands()
     writeSplitCommand(defaultZone)
