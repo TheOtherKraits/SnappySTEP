@@ -42,7 +42,9 @@ def mainFunc():
     if "sHM" in config:
         mRFS = str(config["sHM"]["multiRegionFeatureSnap"])
         commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/multiRegionFeatureSnap -set " + str(config["sHM"]["multiRegionFeatureSnap"]).lower()+";")
-
+    if "GEOMETRY" in config:
+        if "Scaling" in config["GEOMETRY"]:
+            gmsh.option.setNumber("Geometry.OCCScaling",config["GEOMETRY"]["Scaling"])
 
     # Find geometry files
     if args.file is None:
