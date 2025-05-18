@@ -9,7 +9,7 @@ MeshAlgorithm = 6
 EdgeMesh = true
 # generates edge mesh files.
 
-[GEOMETRY] # Not implimented yet
+[GEOMETRY]
 Scaling = 1
 # Geometry.OCCScaling
 
