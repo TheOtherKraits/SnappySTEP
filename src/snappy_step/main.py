@@ -8,9 +8,9 @@ import tomllib
 
 
 def mainFunc():
-    parser = argparse.ArgumentParser(description='Prepare STEP geometry for SnappyHexMesh using GMSH')
+    parser = argparse.ArgumentParser(description='Process STEP geometry to generate STL files for SnappyHexMesh using GMSH')
     parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
-    parser.add_argument('-vf', action='store_true',help='Display faces and labels. Exits without generating mesh') # view faces after coherence and don't generate mesh
+    parser.add_argument('-vf', action='store_true',help='Display faces and labels. User can choose to continue or stop after inspecting output') # view faces after coherence and don't generate mesh
     parser.add_argument('-file',help='Specify filename if multiple step files present in geometry directory')
 
     args = parser.parse_args()
@@ -34,17 +34,18 @@ def mainFunc():
             print("There seems to be a problem with snappyStep.toml. Please check for format errors. Exiting.")
             exit(1)
 
-    if "insidePoint" in config:  
-        print("Using insidePoints defined in config")
+    if "locationInMesh" in config:  
+        print("Using locationInMesh coordinates defined in config")
+        for key in config["locationInMesh"]:
+            new_key = validateNames([key])
+            config["locationInMesh"][new_key[0]] = config["locationInMesh"].pop(key)
+
     else:
-        config["insidePoint"] = []
+        config["locationInMesh"] = []
     commands = []
     if "sHM" in config:
         mRFS = str(config["sHM"]["multiRegionFeatureSnap"])
         commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/multiRegionFeatureSnap -set " + str(config["sHM"]["multiRegionFeatureSnap"]).lower()+";")
-    if "GEOMETRY" in config:
-        if "Scaling" in config["GEOMETRY"]:
-            gmsh.option.setNumber("Geometry.OCCScaling",config["GEOMETRY"]["Scaling"])
 
     # Find geometry files
     if args.file is None:
@@ -81,6 +82,12 @@ def mainFunc():
     # Begin gmsh operations
     gmsh.initialize()
     gmsh.option.setString('Geometry.OCCTargetUnit', 'M') # Set meters as working unit
+
+    # Set Import Scaling
+    if "GEOMETRY" in config:
+        if "Scaling" in config["GEOMETRY"]:
+            gmsh.option.setNumber("Geometry.OCCScaling",config["GEOMETRY"]["Scaling"])
+
 
     # retrive geometry
     print('Reading geometry')
@@ -141,14 +148,14 @@ def mainFunc():
 
     print("Getting locationInMesh coordinates")
     # get inside points for each volume
-    insidePoints = []
+    locationInMesh = []
     for i, element in enumerate(volumes):
         print(volNames[i]+":")
-        if volNames[i] in config["insidePoint"]:
-            insidePoints.append(config["insidePoint"][volNames[i]])
+        if volNames[i] in config["locationInMesh"]:
+            locationInMesh.append(config["locationInMesh"][volNames[i]])
             print("Using coordinates in config file.")
         else:
-            insidePoints.append(getLocationInMesh(gmsh,element[1]))
+            locationInMesh.append(getLocationInMesh(gmsh,element[1]))
     
     print('Identifying contacts')
 
@@ -173,9 +180,13 @@ def mainFunc():
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
         gmsh.option.set_number("Geometry.LabelType",3)
-        print("gmsh window open.")
+        print("gmsh window open. Close gmsh window to continue.")
         gmsh.fltk.run()
-        exit(1)
+        ans = ask_yes_no("Would you like to continue?")
+        gmsh.fltk.finalize()
+        if not ans:
+            exit(1)
+        
 
     # Set Physical Surfaces
     # Start with exterior surfaces
@@ -327,7 +338,7 @@ def mainFunc():
         #writeRefinementRegions(element, interface_patches[i])
 
     # Refinement Surfaces commands and get name default zone
-    surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),volNames,[el[1] for el in volTags],insidePoints)
+    surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),volNames,[el[1] for el in volTags],locationInMesh)
     defaultZone = surfReturn[1]
     commands.extend(surfReturn[0])
 
@@ -338,7 +349,7 @@ def mainFunc():
     if config["MESH"]["EdgeMesh"]:
         commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
     # Write mesh generation commands
-    writeMeshCommands()
+    # writeMeshCommands()
     writeSplitCommand(defaultZone)
     writeCommands('snappystep.sh',commands)
 
@@ -352,11 +363,9 @@ def mainFunc():
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
         gmsh.option.set_number("Geometry.LabelType",3)
-        print("gmsh window open.")
+        print("gmsh window open. Close gmsh window to continue.")
         gmsh.fltk.run()
+        gmsh.fltk.finalize()
     print("All geometry files and scripts generated. Done.")
     # Last GMSH command
     gmsh.finalize()
-
-    
-
