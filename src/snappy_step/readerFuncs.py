@@ -60,7 +60,7 @@ def writeFoamDictionaryEdge(names: list[str]):
     # sub_commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/features -set ")
     # sub_commands.append("(")
     for name in names:
-        commands.append("sed -i -e 's/"+name+".eMesh/"+"edge\/"+name+"_edge.vtk"+"/g' system/snappyHexMeshDict")
+        commands.append("sed -i -e 's/"+name+".eMesh/"+"edge/"+name+"_edge.vtk"+"/g' system/snappyHexMeshDict")
         # sub_commands.append(" { file \""+"edges/"+name+"_edge.vtk;\" level 1; }")
     # sub_commands.append(" )")
     # commands.append("".join(sub_commands))
@@ -186,10 +186,15 @@ def getStepSurfaces(fullPath):
     Names = validateNames(Names)
     return Names, nSurfaces
 
-def validateNames(names):
-    names = [name.strip().replace(" ", "_") for name in names]
-    names = [name.replace("(", "") for name in names]
-    names = [name.replace(")", "") for name in names]
+def validateNames(names: list[str]):
+    for name in names:
+        if name.startswith("."):
+            name = name.lstrip(".")
+        name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+
+    # names = [name.strip().replace(" ", "_") for name in names]
+    # names = [name.replace("(", "") for name in names]
+    # names = [name.replace(")", "") for name in names]
     return names
 
 def getLocationInMesh(gmsh, volTag: int):
@@ -253,3 +258,13 @@ def writeEdgeMesh(gmsh, surfaces: list, name: str, geoPath: str):
     gmsh.write(os.path.join(geoPath,"edges",name+"_edge.vtk"))
     print("Done.")
     gmsh.model.removePhysicalGroups([])
+
+def ask_yes_no(question):
+    while True:
+        response = input(f"{question} (yes or no): ").lower()
+        if response in ["yes", "y"]:
+            return True
+        elif response in ["no", "n"]:
+            return False
+        else:
+            print("Invalid input. Please enter 'yes' or 'no' (y/n).")
