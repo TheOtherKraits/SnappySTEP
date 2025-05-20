@@ -1,1 +1,1 @@
-from .main import mainFunc
+from .main import mainFunc, snappyStepCleanup

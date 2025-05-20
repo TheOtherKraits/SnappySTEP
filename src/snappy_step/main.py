@@ -42,6 +42,14 @@ def mainFunc():
 
     else:
         config["locationInMesh"] = []
+
+    if "EdgeMesh" in config["MESH"]:
+        edgeMesh = config["MESH"]["EdgeMesh"]
+        if edgeMesh:
+            print("Edge mesh files will be generated")
+    else:
+        edgeMesh = False
+            
     commands = []
     if "sHM" in config:
         mRFS = str(config["sHM"]["multiRegionFeatureSnap"])
@@ -82,7 +90,7 @@ def mainFunc():
     # Begin gmsh operations
     gmsh.initialize()
     gmsh.option.setString('Geometry.OCCTargetUnit', 'M') # Set meters as working unit
-
+    
     # Set Import Scaling
     if "GEOMETRY" in config:
         if "Scaling" in config["GEOMETRY"]:
@@ -113,6 +121,7 @@ def mainFunc():
     volumes = gmsh.model.getEntities(3)
     if len(volumes) != nVol:
         print("Coherence changed number of volumes. Check geometry. Exiting")
+        gmsh.finalize()
         exit(1)
 
     # Get Geometry Names
@@ -185,6 +194,7 @@ def mainFunc():
         ans = ask_yes_no("Would you like to continue?")
         gmsh.fltk.finalize()
         if not ans:
+            gmsh.finalize()
             exit(1)
         
 
@@ -233,6 +243,7 @@ def mainFunc():
             else:
                 if any(x in snappyStepGroupsDict[key] for x in external_patches):
                     print("Mismatched patch groups found. Exiting")
+                    gmsh.finalize()
                     exit(1)
 
         # Add external patches to physical groups
@@ -266,7 +277,7 @@ def mainFunc():
     #Clear all phsical groups
     gmsh.model.removePhysicalGroups([])
     # Write corresponding edge mesh
-    if config["MESH"]["EdgeMesh"]:
+    if edgeMesh:
         writeEdgeMesh(gmsh,patches_for_edge_mesh,os.path.basename(stepFile).split('.')[0],geoPath)
     #Create physical group for each interface volume pair
     uniqueInterfaceNames = set(interfaceNames)
@@ -293,7 +304,7 @@ def mainFunc():
         gmsh.write(os.path.join(geoPath,element+".stl"))
         print("Done.")
         gmsh.model.removePhysicalGroups([])
-        if config["MESH"]["EdgeMesh"]:
+        if edgeMesh:
             writeEdgeMesh(gmsh, patches, element, geoPath)
     
 
@@ -315,6 +326,7 @@ def mainFunc():
                     # if not setAdj == set([compAdj[iter][0],compAdj[iter][1]]):
                     if not setAdj == set([compAdj[0][0],compAdj[0][1]]):
                         print("interface group " + key + " contains surfaces between multiple volume pairs. Please split into groups of single volume pairs. Exiting.")
+                        gmsh.finalize()
                         exit(1)
 
             print("Writing " + os.path.join(geoPath,key+".stl"))
@@ -322,7 +334,7 @@ def mainFunc():
             print("Done.")
             gmsh.model.removePhysicalGroups([])
             # Write corresponding edge mesh
-            if config["MESH"]["EdgeMesh"]:
+            if edgeMesh:
                 writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geoPath)
 
     # Write shell scripts
@@ -346,7 +358,7 @@ def mainFunc():
     if makeGroups:
         commands.extend(setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
     print("Done.")
-    if config["MESH"]["EdgeMesh"]:
+    if edgeMesh:
         commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
     # Write mesh generation commands
     # writeMeshCommands()
@@ -354,7 +366,7 @@ def mainFunc():
     writeCommands('snappystep.sh',commands)
 
     os.chmod("./snappyStep.sh",0o755) # Make shell script executable
-    os.chmod("./snappyStepGenerateMesh.sh",0o755)
+    # os.chmod("./snappyStepGenerateMesh.sh",0o755)
     os.chmod("./snappyStepSplitMeshRegions.sh",0o755)
 
     # See results
@@ -369,3 +381,8 @@ def mainFunc():
     print("All geometry files and scripts generated. Done.")
     # Last GMSH command
     gmsh.finalize()
+    return
+
+def snappyStepCleanup():
+    gmsh.finalize()
+    return
