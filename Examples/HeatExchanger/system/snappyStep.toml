@@ -11,7 +11,7 @@ EdgeMesh = true
 
 [GEOMETRY]
 Scaling = 1
-# Geometry.OCCScaling
+
 
 #[insidePoint] # if volume is not listed, a suitible point will be determined
 #obj = [0.01, 0.190, 0.05]
