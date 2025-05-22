@@ -6,10 +6,11 @@ MeshSizeFromCurvature = 0
 MeshAlgorithm = 6
 # 1: MeshAdapt, 2: Automatic, 3: Initial mesh only, 5: Delaunay, 6: Frontal-Delaunay, 7: BAMG, 8: Frontal-Delaunay for Quads, 9: Packing of Parallelograms, 11: Quasi-structured Quad
 # GMSH default is 6: Frontal-Dlaunay
+EdgeMesh = false
 
-[GEOMETRY] # Not implimented yet
+[GEOMETRY]
 Scaling = 1
-# Geometry.OCCScaling
+
 
 #[insidePoint] # if volume is not listed, a suitible point will be determined
 #obj = [0.01, 0.190, 0.05]
