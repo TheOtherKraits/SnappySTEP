@@ -60,7 +60,7 @@ def writeFoamDictionaryEdge(names: list[str]):
     # sub_commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/features -set ")
     # sub_commands.append("(")
     for name in names:
-        commands.append("sed -i -e 's/"+name+".eMesh/"+"edge/"+name+"_edge.vtk"+"/g' system/snappyHexMeshDict")
+        commands.append("sed -i -e 's/"+name+".eMesh/"+"edges\/"+name+"_edge.vtk"+"/g' system/snappyHexMeshDict")
         # sub_commands.append(" { file \""+"edges/"+name+"_edge.vtk;\" level 1; }")
     # sub_commands.append(" )")
     # commands.append("".join(sub_commands))
@@ -187,10 +187,10 @@ def getStepSurfaces(fullPath):
     return Names, nSurfaces
 
 def validateNames(names: list[str]):
-    for name in names:
+    for element, name in enumerate(names):
         if name.startswith("."):
             name = name.lstrip(".")
-        name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+        names[element] = re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
     # names = [name.strip().replace(" ", "_") for name in names]
     # names = [name.replace("(", "") for name in names]
