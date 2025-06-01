@@ -16,13 +16,13 @@ def mainFunc():
     args = parser.parse_args()
     
     ext = [".stp", ".step", ".STP", ".STEP"]
-    geoPath = "./constant/geometry"
+    geoPath = getGeoPath()
     files = []
     
 
     # Check for OpenFOAM case structure
 
-    if not os.path.exists(geoPath):
+    if geoPath is None:
         print("Please run from OpenFOAM case root directory.")
         exit(1)
 
@@ -62,7 +62,7 @@ def mainFunc():
                 files.append(file)
     
         if len(files) == 0:
-            print("No step file found in constant/geometry directory. Exiting.")
+            print("No step file found in constant/(geometry||triSurface) directory. Exiting.")
             exit(1)
         elif len(files) > 1:
             print("More than one step file found. Please remove or rename other files, or specify the file to read with the -file arguemnt. Exiting.")
