@@ -268,3 +268,10 @@ def ask_yes_no(question):
             return False
         else:
             print("Invalid input. Please enter 'yes' or 'no' (y/n).")
+def getGeoPath(): 
+    geoPath = "./constant/geometry"
+    if not os.path.exists(geoPath):
+        geoPath = "./constant/triSurface"
+        if not os.path.exists(geoPath):
+            geoPath = None
+    return geoPath
