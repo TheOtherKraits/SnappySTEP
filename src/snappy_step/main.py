@@ -7,18 +7,12 @@ from itertools import count
 import tomllib
 
 
-def mainFunc():
-    parser = argparse.ArgumentParser(description='Process STEP geometry to generate STL files for SnappyHexMesh using GMSH')
-    parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
-    parser.add_argument('-vf', action='store_true',help='Display faces and labels. User can choose to continue or stop after inspecting output') # view faces after coherence and don't generate mesh
-    parser.add_argument('-file',help='Specify filename if multiple step files present in geometry directory')
-
-    args = parser.parse_args()
+def runSnappyStep(file_name,v,vf):
+    
     
     ext = [".stp", ".step", ".STP", ".STEP"]
     geoPath = getGeoPath()
     files = []
-    
 
     # Check for OpenFOAM case structure
 
@@ -56,7 +50,7 @@ def mainFunc():
         commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/multiRegionFeatureSnap -set " + str(config["sHM"]["multiRegionFeatureSnap"]).lower()+";")
 
     # Find geometry files
-    if args.file is None:
+    if file_name is None:
         for file in os.listdir(geoPath):
             if file.endswith(tuple(ext)):
                 files.append(file)
@@ -65,23 +59,23 @@ def mainFunc():
             print("No step file found in constant/(geometry||triSurface) directory. Exiting.")
             exit(1)
         elif len(files) > 1:
-            print("More than one step file found. Please remove or rename other files, or specify the file to read with the -file arguemnt. Exiting.")
+            print("More than one step file found. Please remove or rename other files, or specify the filepath to read with the -file arguemnt. Exiting.")
             exit(1)   
         else:
             print(files[0]+" found")
             stepFile = os.path.join(geoPath, files[0])
     else:
-        if os.path.isabs(args.file):
-            if os.path.isfile(args.file):
-                stepFile = args.file
+        if os.path.isabs(file_name):
+            if os.path.isfile(file_name):
+                stepFile = file_name
             else:
-                print(args.file + " is not a file. Exiting.")
+                print(file_name + " is not a file. Exiting.")
                 exit(1)
         else:
-            if os.path.isfile(os.path.join(geoPath,args.file)):
-                 stepFile = os.path.join(geoPath,args.file)
+            if os.path.isfile(file_name):
+                 stepFile = file_name
             else:
-                print(args.file + " is not a file. Exiting.")
+                print(file_name + " is not a file. Exiting.")
                 exit(1)
         
     makeGroups = False
@@ -184,7 +178,7 @@ def mainFunc():
         interfaceList.append(element) # List rather than set for use later
 
 # optionally view faces and volumes and exit before mesh
-    if args.vf:
+    if vf:
         gmsh.option.set_number("Geometry.VolumeLabels",1)
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
@@ -370,7 +364,7 @@ def mainFunc():
     os.chmod("./snappyStepSplitMeshRegions.sh",0o755)
 
     # See results
-    if args.v:
+    if v:
         gmsh.option.set_number("Geometry.VolumeLabels",1)
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
@@ -386,3 +380,18 @@ def mainFunc():
 def snappyStepCleanup():
     gmsh.finalize()
     return
+
+def mainFunc():
+    parser = argparse.ArgumentParser(description='Process STEP geometry to generate STL files for SnappyHexMesh using GMSH')
+    parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
+    parser.add_argument('-vf', action='store_true',help='Display faces and labels. User can choose to continue or stop after inspecting output') # view faces after coherence and don't generate mesh
+    parser.add_argument('-file',help='Specify filename if not in constant/(geometry||triSurface) directory or multiple step files are present')
+
+    args = parser.parse_args()
+    runSnappyStep(args.file, args.v,args.vf)
+
+def snappystep(file_name = None):
+    runSnappyStep(file_name,False,False)
+
+if __name__ == "__main__":
+    mainFunc()
