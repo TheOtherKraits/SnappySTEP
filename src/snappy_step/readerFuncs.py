@@ -1,5 +1,6 @@
 import re
 import os
+from foamlib import FoamFile, FoamCase
 
 
 def regexStepBodyNames(fullPath): # Just regex all text?
@@ -275,3 +276,25 @@ def getGeoPath():
         if not os.path.exists(geoPath):
             geoPath = None
     return geoPath
+
+# def write_shmd(input:dict):
+def write_shmd():
+
+    file = FoamFile("./system/snappyHexMeshDict") # Load snappyHexMeshDict
+    print(file)
+    # file["writeInterval"] = 100 # Set the write interval to 100
+    # file["writeFormat"] = "binary" # Set the write format to binary
+
+def read_snappy_step_dict():
+    file = FoamFile("./system/snappyStepDict")
+    print(file)
+
+def write_block_mesh_dict(boudingBox,dx,dy,dz):
+    case = FoamCase(".")
+    with case.block_mesh as file: # Load Dict
+        print(file)
+
+def write_snappy_step_dict_template():
+    file = FoamFile("./system/snappyStepDict")
+    print(file)
+

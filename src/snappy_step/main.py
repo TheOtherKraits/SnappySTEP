@@ -2,8 +2,6 @@ import argparse
 import gmsh
 import os
 from .readerFuncs import *
-from collections import Counter
-from itertools import count
 import tomllib
 
 
