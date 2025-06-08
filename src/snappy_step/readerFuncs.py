@@ -1,6 +1,7 @@
 import re
 import os
 from foamlib import FoamFile, FoamCase
+import math
 
 
 def regexStepBodyNames(fullPath): # Just regex all text?
@@ -289,11 +290,53 @@ def read_snappy_step_dict():
     file = FoamFile("./system/snappyStepDict")
     print(file)
 
-def write_block_mesh_dict(boudingBox,dx,dy,dz):
+def write_block_mesh_dict(boudingBox:list,dx,dy,dz):
+    x_len = boudingBox[3]-boudingBox[0]
+    y_len = boudingBox[4]-boudingBox[1]
+    z_len = boudingBox[5]-boudingBox[2]
+    x_cells = math.ceil(x_len/dx)
+    y_cells = math.ceil(y_len/dy)
+    z_cells = math.ceil(z_len/dz)
+    x_buffer = ((x_cells*dx)-x_len)/2.0
+    y_buffer = ((y_cells*dy)-y_len)/2.0
+    z_buffer = ((z_cells*dz)-z_len)/2.0
+    vertices = [
+            ["$xMin", "$yMin", "$zMin"],
+            ["$xMax", "$yMin", "$zMin"],
+            ["$xMax", "$yMax", "$zMin"],
+            ["$xMin", "$yMax", "$zMin"],
+            ["$xMin", "$yMin", "$zMax"],
+            ["$xMax", "$yMin", "$zMax"],
+            ["$xMax", "$yMax", "$zMax"],
+            ["$xMin", "$yMax", "$zMax"]
+            ]
+    blocks = ["hex", [0, 1, 2, 3, 4, 5, 6, 7], ["$xCells", "$yCells", "$zCells"], "simpleGrading", [1, 1, 1]]
     case = FoamCase(".")
-    with case.block_mesh as file: # Load Dict
-        print(file)
+    with case.block_mesh_dict as file: # Load Dict
+        file["defaultPatch"]={"name":  "background", "type": "patch"}
+        file["xMin"] = boudingBox[0] - x_buffer
+        file["xMax"] = boudingBox[3] + x_buffer
+        file["yMin"] = boudingBox[1] - y_buffer
+        file["yMax"] = boudingBox[4] + y_buffer
+        file["zMin"] = boudingBox[2] - z_buffer
+        file["zMax"] = boudingBox[5] + z_buffer
+        file["xCells"] = x_cells
+        file["yCells"] = y_cells
+        file["zCells"] = z_cells
+        file["scale"] = 1
 
+        if "vertices" not in file.as_dict():
+            file["vertices"] = vertices
+        elif file["vertices"] != vertices:
+            file["vertices"] = vertices
+        file["blocks"] = blocks
+        if "edges" not in file.as_dict():
+            file["edges"] = []
+            
+        if "mergePatchPairs" not in file.as_dict():
+            file["mergePatchPairs"] = []
+
+            
 def write_snappy_step_dict_template():
     file = FoamFile("./system/snappyStepDict")
     print(file)
