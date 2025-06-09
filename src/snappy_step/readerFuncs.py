@@ -79,7 +79,41 @@ def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
           
     commands.append("\n") # add new line to end
     return commands
-    
+
+def write_sHMD_Geo(name: str, regions: list[str]) -> None:
+    file = FoamFile("./system/snappyHexMeshDict")
+    file["geometry"][name] = {}
+    file["geometry"][name]["type"] = "triSurfaceMesh"
+    file["geometry"][name]["file"] = "\""+name+".stl"+"\""
+    if regions: # Check if not empty
+        file["geometry"][name]["regions"] = {}
+        for i, element in enumerate(regions):
+            file["geometry"][name]["regions"][element] = {}
+            file["geometry"][name]["regions"][element]["name"] = element
+
+def initialize_sHMD():
+    file = FoamFile("./system/snappyHexMeshDict")
+    try:
+        old_sHMD = file.as_dict()
+    except:
+        old_sHMD = None
+
+    file["castellatedMesh"] = check_old_dict(old_sHMD,"castellatedMesh", "on")
+    file["snap"] = check_old_dict(old_sHMD,"snap", "on")
+    file["addLayers"] = check_old_dict(old_sHMD,"addLayers", "off")
+    file["geometry"] = {}
+    file["castellatedMeshControls"] = {}
+    file["castellatedMeshControls"]["features"] = ()
+    file["castellatedMeshControls"]["refinementSurfaces"] = {}
+    file["snapControls"] = {}
+    file["mergeToleance"] = check_old_dict(old_sHMD,"mergeTolerance", 1e-6)
+    return old_sHMD
+
+def check_old_dict(old_dict, key, default_value):
+    if old_dict is not None and key in old_dict:
+        return old_dict[key]
+    else:
+        return default_value
 
 def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
     commands = [] # use append to add to list
@@ -112,6 +146,32 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
     commands.append("\n") # add new line to end
     return commands, element
 
+def write_sHMD_refinement_surfaces_cellZone(names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
+    nContacts = []
+    flatPairs = sum(pairs, []) # flattens pairs list into single list
+    for i, element in enumerate(volumeTags):
+        nContacts.append(flatPairs.count(element)) # counts number of interfaces for each volume
+    # Sort volumes by number of contacts
+    nContacts, volumeTags, volumeNames, coordinate = zip(*sorted(zip(nContacts, volumeTags, volumeNames,coordinate)))
+    file = FoamFile("./system/snappyHexMeshDict")
+    for i, element in enumerate(volumeNames):
+        if element == volumeNames[-1]:
+            file["castellatedMeshControls"]["insidePoint"] = coordinate[i]
+            break
+        k = volumeTags[i] # Tag of volume
+        for j, tag in enumerate(pairs): # Find first insance of volume in pairs
+            if k in tag:
+                break
+            else:
+                continue
+        file["castellatedMeshControls"]["refinementSurfaces"][names[j]]["cellZone"] = element
+        file["castellatedMeshControls"]["refinementSurfaces"][names[j]]["mode"] = "insidePoint"
+        file["castellatedMeshControls"]["refinementSurfaces"][names[j]]["insidePoint"] = coordinate[i]
+        # print("Generated commands for ", element)
+        # remove used interface from list
+        names.pop(j)
+        pairs.pop(j)
+    return element
 
 def writeRefinementRegions(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
@@ -128,6 +188,16 @@ def writeRefinementRegions(name: str, regions: list[str]) -> None:
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/faceZone -add " + name + ";")
     commands.append("\n") # add new line to end
     return commands
+
+def write_sHMD_refinement_surfaces(name: str, regions: list[str],default_refinement:list[int],old_dict) -> None:
+    file = FoamFile("./system/snappyHexMeshDict")
+    if regions: # Check if empty
+        file["castellatedMeshControls"]["refinementSurfaces"][name] = {"level": [2, 2], "patchInfo": {"type": "wall"},"regions": {}}
+        for i, element in enumerate(regions):
+            file["castellatedMeshControls"]["refinementSurfaces"][name]["regions"]["element"] = {"level": [2, 2], "patchInfo": {"type": "wall"}}
+    else:
+        file["castellatedMeshControls"]["refinementSurfaces"][name]["faceZone"] = name
+        file["castellatedMeshControls"]["refinementSurfaces"][name]["level"] = [2, 2]
 
 
 def writeMeshCommands():
@@ -172,6 +242,10 @@ def setExternalPatch(regionList: list, name: str):
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + region +"/patchInfo/type -set patch;")
     return commands
 
+def set_sHMD_external_patch(regionList: list, name: str):
+    file = FoamFile("./system/snappyHexMeshDict")
+    for region in regionList:
+        file["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][region]["patchInfo"]["type"] = "patch"
 
 def getStepSurfaces(fullPath):
     with open(fullPath, 'r') as StepFile:
@@ -338,6 +412,21 @@ def write_block_mesh_dict(boudingBox:list,dx,dy,dz):
 
             
 def write_snappy_step_dict_template():
-    file = FoamFile("./system/snappyStepDict")
-    print(file)
+    file_path = "./system/snappyStepDict"
+    file = FoamFile(file_path)
+    if os.path.isfile(file_path):
+        try:
+            os.remove(file_path)
+        except PermissionError:
+            print(f"Error: Permission denied to delete '{file_path}'.")
+        except OSError as e:
+            print(f"Error: Could not delete '{file_path}'. Reason: {e}")
+    file["gmsh"] = {"meshSizeMax": 1000, "meshSizeMin": 0,"meshSizeFactor": 1,"meshSizeFromCurvature": 90,"meshAlgorithm": 6, "scaling": 1}
+    file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1}
+    file["locationInMesh"] = {}
+    file["overwriteRefinements"] = False
+
+    
+    
+    
 
