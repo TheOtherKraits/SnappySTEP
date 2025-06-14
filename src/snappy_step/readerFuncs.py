@@ -73,10 +73,13 @@ def write_sHMD_feature_edges(new_dict:dict, names: list[str], old_dict:dict, def
     new_dict["snapControls"]["implicitFeatureSnap"] = False
     for iter, name in enumerate(names):
         if old_dict is not None:
-                try:
-                    level = old_dict["castellatedMeshControls"]["features"][iter]["level"]
-                except:
-                    level = default_level
+            try:
+                level = old_dict["castellatedMeshControls"]["features"][iter]["level"]
+            except:
+                level = default_level
+        else:
+            level = default_level
+
         new_dict["castellatedMeshControls"]["features"][iter] = {"file": "edge/"+name+"_edge.vtk", "level": level}
 
 
