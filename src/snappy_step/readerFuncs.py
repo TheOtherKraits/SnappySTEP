@@ -68,6 +68,18 @@ def writeFoamDictionaryEdge(names: list[str]):
     # commands.append("".join(sub_commands))
     return commands
 
+def write_sHMD_feature_edges(new_dict:dict, names: list[str], old_dict:dict, default_level):
+    new_dict["snapControls"]["explicitFeatureSnap"] = True
+    new_dict["snapControls"]["implicitFeatureSnap"] = False
+    for iter, name in enumerate(names):
+        if old_dict is not None:
+                try:
+                    level = old_dict["castellatedMeshControls"]["features"][iter]["level"]
+                except:
+                    level = default_level
+        new_dict["castellatedMeshControls"]["features"][iter] = {"file": "edge/"+name+"_edge.vtk", "level": level}
+
+
 def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
     commands = [] # use append to add to list
     commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -remove") # clear any existing regions
@@ -80,16 +92,16 @@ def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
     commands.append("\n") # add new line to end
     return commands
 
-def write_sHMD_Geo(name: str, regions: list[str]) -> None:
-    file = FoamFile("./system/snappyHexMeshDict")
-    file["geometry"][name] = {}
-    file["geometry"][name]["type"] = "triSurfaceMesh"
-    file["geometry"][name]["file"] = "\""+name+".stl"+"\""
+def write_sHMD_Geo(new_dict:dict, name: str, regions: list[str]) -> None:
+    # file = FoamFile("./system/snappyHexMeshDict")
+    new_dict["geometry"][name] = {}
+    new_dict["geometry"][name]["type"] = "triSurfaceMesh"
+    new_dict["geometry"][name]["file"] = "\""+name+".stl"+"\""
     if regions: # Check if not empty
-        file["geometry"][name]["regions"] = {}
+        new_dict["geometry"][name]["regions"] = {}
         for i, element in enumerate(regions):
-            file["geometry"][name]["regions"][element] = {}
-            file["geometry"][name]["regions"][element]["name"] = element
+            new_dict["geometry"][name]["regions"][element] = {}
+            new_dict["geometry"][name]["regions"][element]["name"] = element
 
 def initialize_sHMD():
     file = FoamFile("./system/snappyHexMeshDict")
@@ -97,17 +109,18 @@ def initialize_sHMD():
         old_sHMD = file.as_dict()
     except:
         old_sHMD = None
+    new_dict = {}
 
-    file["castellatedMesh"] = check_old_dict(old_sHMD,"castellatedMesh", "on")
-    file["snap"] = check_old_dict(old_sHMD,"snap", "on")
-    file["addLayers"] = check_old_dict(old_sHMD,"addLayers", "off")
-    file["geometry"] = {}
-    file["castellatedMeshControls"] = {}
-    file["castellatedMeshControls"]["features"] = ()
-    file["castellatedMeshControls"]["refinementSurfaces"] = {}
-    file["snapControls"] = {}
-    file["mergeToleance"] = check_old_dict(old_sHMD,"mergeTolerance", 1e-6)
-    return old_sHMD
+    new_dict["castellatedMesh"] = check_old_dict(old_sHMD,"castellatedMesh", "on")
+    new_dict["snap"] = check_old_dict(old_sHMD,"snap", "on")
+    new_dict["addLayers"] = check_old_dict(old_sHMD,"addLayers", "off")
+    new_dict["geometry"] = {}
+    new_dict["castellatedMeshControls"] = {}
+    new_dict["castellatedMeshControls"]["features"] = ()
+    new_dict["castellatedMeshControls"]["refinementSurfaces"] = {}
+    new_dict["snapControls"] = {}
+    new_dict["mergeToleance"] = check_old_dict(old_sHMD,"mergeTolerance", 1e-6)
+    return old_sHMD, new_dict
 
 def check_old_dict(old_dict, key, default_value):
     if old_dict is not None and key in old_dict:
@@ -146,17 +159,17 @@ def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: 
     commands.append("\n") # add new line to end
     return commands, element
 
-def write_sHMD_refinement_surfaces_cellZone(names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
+def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
     nContacts = []
     flatPairs = sum(pairs, []) # flattens pairs list into single list
     for i, element in enumerate(volumeTags):
         nContacts.append(flatPairs.count(element)) # counts number of interfaces for each volume
     # Sort volumes by number of contacts
     nContacts, volumeTags, volumeNames, coordinate = zip(*sorted(zip(nContacts, volumeTags, volumeNames,coordinate)))
-    file = FoamFile("./system/snappyHexMeshDict")
+    # file = FoamFile("./system/snappyHexMeshDict")
     for i, element in enumerate(volumeNames):
         if element == volumeNames[-1]:
-            file["castellatedMeshControls"]["insidePoint"] = coordinate[i]
+            new_dict["castellatedMeshControls"]["insidePoint"] = coordinate[i]
             break
         k = volumeTags[i] # Tag of volume
         for j, tag in enumerate(pairs): # Find first insance of volume in pairs
@@ -164,9 +177,9 @@ def write_sHMD_refinement_surfaces_cellZone(names: list[str],pairs: list[int, in
                 break
             else:
                 continue
-        file["castellatedMeshControls"]["refinementSurfaces"][names[j]]["cellZone"] = element
-        file["castellatedMeshControls"]["refinementSurfaces"][names[j]]["mode"] = "insidePoint"
-        file["castellatedMeshControls"]["refinementSurfaces"][names[j]]["insidePoint"] = coordinate[i]
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[j]]["cellZone"] = element
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[j]]["mode"] = "insidePoint"
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[j]]["insidePoint"] = coordinate[i]
         # print("Generated commands for ", element)
         # remove used interface from list
         names.pop(j)
@@ -189,15 +202,38 @@ def writeRefinementRegions(name: str, regions: list[str]) -> None:
     commands.append("\n") # add new line to end
     return commands
 
-def write_sHMD_refinement_surfaces(name: str, regions: list[str],default_refinement:list[int],old_dict) -> None:
-    file = FoamFile("./system/snappyHexMeshDict")
+def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str], old_dict, defaulLevel: list[int]) -> None:
+    # file = FoamFile("./system/snappyHexMeshDict")
     if regions: # Check if empty
-        file["castellatedMeshControls"]["refinementSurfaces"][name] = {"level": [2, 2], "patchInfo": {"type": "wall"},"regions": {}}
+        if old_dict is not None:
+            try:
+                level = old_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"]
+            except:
+                level = defaulLevel
+        else:
+            level = defaulLevel
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][name] = {"level": level, "patchInfo": {"type": "wall"},"regions": {}}
         for i, element in enumerate(regions):
-            file["castellatedMeshControls"]["refinementSurfaces"][name]["regions"]["element"] = {"level": [2, 2], "patchInfo": {"type": "wall"}}
+            if old_dict is not None:
+                try:
+                    level = old_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][element]["level"]
+                except:
+                    level = defaulLevel
+            else:
+                level = defaulLevel
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][element] = {"level": level, "patchInfo": {"type": "wall"}}
     else:
-        file["castellatedMeshControls"]["refinementSurfaces"][name]["faceZone"] = name
-        file["castellatedMeshControls"]["refinementSurfaces"][name]["level"] = [2, 2]
+        if old_dict is not None:
+            try:
+                level = old_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"]
+            except:
+                level = defaulLevel
+        else:
+            level = defaulLevel
+        if name not in new_dict["castellatedMeshControls"]["refinementSurfaces"]:
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][name] = {}
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["faceZone"] = name
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"] = level
 
 
 def writeMeshCommands():
@@ -352,13 +388,13 @@ def getGeoPath():
             geoPath = None
     return geoPath
 
-# def write_shmd(input:dict):
-def write_shmd():
-
+def write_sHMD(new_dict):
+    fn = "./system/snappyHexMeshDict"
+    if os.path.isfile(fn):
+        os.remove(fn)
     file = FoamFile("./system/snappyHexMeshDict") # Load snappyHexMeshDict
-    print(file)
-    # file["writeInterval"] = 100 # Set the write interval to 100
-    # file["writeFormat"] = "binary" # Set the write format to binary
+    for key in new_dict:
+        file[key] = new_dict[key]
 
 def read_snappy_step_dict():
     file = FoamFile("./system/snappyStepDict")
@@ -422,9 +458,9 @@ def write_snappy_step_dict_template():
         except OSError as e:
             print(f"Error: Could not delete '{file_path}'. Reason: {e}")
     file["gmsh"] = {"meshSizeMax": 1000, "meshSizeMin": 0,"meshSizeFactor": 1,"meshSizeFromCurvature": 90,"meshAlgorithm": 6, "scaling": 1}
-    file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1}
+    file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "overwriteRefinements": False}
     file["locationInMesh"] = {}
-    file["overwriteRefinements"] = False
+
 
     
     
