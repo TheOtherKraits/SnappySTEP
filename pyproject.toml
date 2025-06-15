@@ -3,7 +3,8 @@ name = "SnappySTEP"
 version = "0.0.1"
 
 [project.scripts]
-snappySTEP = "snappy_step:mainFunc"
+snappyStep = "snappy_step:mainFunc"
+snappyStepConfig = "snappy_step:write_snappy_step_dict_template"
 
 
 [build-system]

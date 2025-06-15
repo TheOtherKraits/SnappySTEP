@@ -21,9 +21,9 @@ def runSnappyStep(file_name,v,vf):
     # Read Config
     with open("./system/snappyStep.toml", "rb") as f:
         try:
-            config = tomllib.load(f)
+            config = read_snappy_step_dict()
         except:
-            print("There seems to be a problem with snappyStep.toml. Please check for format errors. Exiting.")
+            print("There seems to be a problem with snappyStepDict. Please check for format errors. Exiting.")
             exit(1)
 
     if "locationInMesh" in config:  
@@ -35,18 +35,13 @@ def runSnappyStep(file_name,v,vf):
     else:
         config["locationInMesh"] = []
 
-    if "EdgeMesh" in config["MESH"]:
-        edgeMesh = config["MESH"]["EdgeMesh"]
+    if "edgeMesh" in config["snappyHexMeshSetup"]:
+        edgeMesh = config["snappyHexMeshSetup"]["edgeMesh"]
         if edgeMesh:
             print("Edge mesh files will be generated")
     else:
         edgeMesh = False
-            
-    commands = []
-    if "sHM" in config:
-        mRFS = str(config["sHM"]["multiRegionFeatureSnap"])
-        commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/multiRegionFeatureSnap -set " + str(config["sHM"]["multiRegionFeatureSnap"]).lower()+";")
-
+    
     # Find geometry files
     if file_name is None:
         for file in os.listdir(geoPath):
@@ -84,9 +79,9 @@ def runSnappyStep(file_name,v,vf):
     gmsh.option.setString('Geometry.OCCTargetUnit', 'M') # Set meters as working unit
     
     # Set Import Scaling
-    if "GEOMETRY" in config:
-        if "Scaling" in config["GEOMETRY"]:
-            gmsh.option.setNumber("Geometry.OCCScaling",config["GEOMETRY"]["Scaling"])
+    if "gmsh" in config:
+        if "scaling" in config["gmsh"]:
+            gmsh.option.setNumber("Geometry.OCCScaling",config["gmsh"]["scaling"])
 
 
     # retrive geometry
@@ -115,6 +110,9 @@ def runSnappyStep(file_name,v,vf):
         print("Coherence changed number of volumes. Check geometry. Exiting")
         gmsh.finalize()
         exit(1)
+
+    # Get geometric bounds for blockMesh
+    model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
 
     # Get Geometry Names
     print('Getting Names of Bodies')
@@ -152,7 +150,7 @@ def runSnappyStep(file_name,v,vf):
     locationInMesh = []
     for i, element in enumerate(volumes):
         print(volNames[i]+":")
-        if volNames[i] in config["locationInMesh"]:
+        if "locationInMesh" in config and volNames[i] in config["locationInMesh"]:
             locationInMesh.append(config["locationInMesh"][volNames[i]])
             print("Using coordinates in config file.")
         else:
@@ -252,11 +250,11 @@ def runSnappyStep(file_name,v,vf):
     # Mesh
     # Use commands below to set mesh sizes
     print("Generating Surface Mesh")
-    gmsh.option.setNumber("Mesh.Algorithm",config["MESH"]["MeshAlgorithm"])
-    gmsh.option.setNumber("Mesh.MeshSizeFactor",config["MESH"]["MeshSizeFactor"])
-    gmsh.option.setNumber("Mesh.MeshSizeMin",config["MESH"]["MeshSizeMin"])
-    gmsh.option.setNumber("Mesh.MeshSizeMax",config["MESH"]["MeshSizeMax"])
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature",config["MESH"]["MeshSizeFromCurvature"])
+    gmsh.option.setNumber("Mesh.Algorithm",config["gmsh"]["meshAlgorithm"])
+    gmsh.option.setNumber("Mesh.MeshSizeFactor",config["gmsh"]["meshSizeFactor"])
+    gmsh.option.setNumber("Mesh.MeshSizeMin",config["gmsh"]["meshSizeMin"])
+    gmsh.option.setNumber("Mesh.MeshSizeMax",config["gmsh"]["meshSizeMax"])
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature",config["gmsh"]["meshSizeFromCurvature"])
     gmsh.model.mesh.generate(2)
 
     # export settings
@@ -329,36 +327,46 @@ def runSnappyStep(file_name,v,vf):
             if edgeMesh:
                 writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geoPath)
 
-    # Write shell scripts
+    # Write snappyHexMeshDic
+    
+    print("Configuring snappyHexMeshDict")
+    old_sHMD , new_sHMD = initialize_sHMD()
+    if "multiRegionFeatureSnap" in config["snappyHexMeshSetup"]:
+        new_sHMD["snapControls"]["multiRegionFeatureSnap"] = config["snappyHexMeshSetup"]["multiRegionFeatureSnap"]
+    else:
+        try:
+            new_sHMD["snapControls"]["multiRegionFeatureSnap"] = old_sHMD["snapControls"]["multiRegionFeatureSnap"]
+        except:
+            new_sHMD["snapControls"]["multiRegionFeatureSnap"] = False
+
     # External walls
-    print("Writing foamDictionary commands.")
-    commands.extend(writeFoamDictionaryGeo(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
-    commands.extend(writeRefinementRegions(os.path.splitext(os.path.basename(stepFile))[0],external_regions))
+    write_sHMD_Geo(new_sHMD,os.path.splitext(os.path.basename(stepFile))[0],external_regions)
+    write_sHMD_refinement_surfaces(new_sHMD,os.path.splitext(os.path.basename(stepFile))[0],external_regions, old_sHMD, config["snappyHexMeshSetup"]["defaultSurfaceRefinement"])
     # Interfaces
     # for i, element in enumerate(uniqueInterfaceNamesList):
     for element in uniqueInterfaceNamesList:
-        commands.extend(writeFoamDictionaryGeo(element,[])) # pass empty region list since each interface only has the single region
-        commands.extend(writeRefinementRegions(element,[]))
-        #writeRefinementRegions(element, interface_patches[i])
+        # pass empty region list since each interface only has the single region
+        write_sHMD_Geo(new_sHMD,element,[])
+        write_sHMD_refinement_surfaces(new_sHMD,element,[], old_sHMD, config["snappyHexMeshSetup"]["defaultSurfaceRefinement"])
 
     # Refinement Surfaces commands and get name default zone
-    surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),volNames,[el[1] for el in volTags],locationInMesh)
-    defaultZone = surfReturn[1]
-    commands.extend(surfReturn[0])
+    # surfReturn = writeFoamDictionarySurf(uniqueInterfaceNamesList.copy(),volPair.copy(),volNames,[el[1] for el in volTags],locationInMesh)
+    defaultZone = write_sHMD_refinement_surfaces_cellZone(new_sHMD,uniqueInterfaceNamesList.copy(),volPair.copy(),volNames,[el[1] for el in volTags],locationInMesh)
 
     # Set external groups as type patch
     if makeGroups:
-        commands.extend(setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
+        set_sHMD_external_patch(new_sHMD,setExternalPatch(setPatchList, os.path.splitext(os.path.basename(stepFile))[0]))
     print("Done.")
     if edgeMesh:
-        commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
-    # Write mesh generation commands
-    # writeMeshCommands()
+        # commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList))
+        write_sHMD_feature_edges(new_sHMD,[os.path.splitext(os.path.basename(stepFile))[0]] + uniqueInterfaceNamesList, old_sHMD, config["snappyHexMeshSetup"]["defaultEdgeRefinement"])
+    # Write dictionaries
+    write_sHMD(new_sHMD)
+    if config["snappyHexMeshSetup"]["generateBlockMeshDict"]:
+        write_block_mesh_dict(model_bounding_box,config["snappyHexMeshSetup"]["backgroundMeshSize"])
+    
+    # Write mesh split command
     writeSplitCommand(defaultZone)
-    writeCommands('snappystep.sh',commands)
-
-    os.chmod("./snappyStep.sh",0o755) # Make shell script executable
-    # os.chmod("./snappyStepGenerateMesh.sh",0o755)
     os.chmod("./snappyStepSplitMeshRegions.sh",0o755)
 
     # See results
