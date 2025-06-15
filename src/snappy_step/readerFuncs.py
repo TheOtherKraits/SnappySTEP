@@ -80,7 +80,7 @@ def write_sHMD_feature_edges(new_dict:dict, names: list[str], old_dict:dict, def
         else:
             level = default_level
 
-        new_dict["castellatedMeshControls"]["features"][iter] = {"file": "edge/"+name+"_edge.vtk", "level": level}
+        new_dict["castellatedMeshControls"]["features"].append({"file": "\"edge/"+name+"_edge.vtk\"", "level": level})
 
 
 def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
@@ -119,7 +119,7 @@ def initialize_sHMD():
     new_dict["addLayers"] = check_old_dict(old_sHMD,"addLayers", "off")
     new_dict["geometry"] = {}
     new_dict["castellatedMeshControls"] = {}
-    new_dict["castellatedMeshControls"]["features"] = ()
+    new_dict["castellatedMeshControls"]["features"] = []
     new_dict["castellatedMeshControls"]["refinementSurfaces"] = {}
     new_dict["snapControls"] = {}
     new_dict["mergeToleance"] = check_old_dict(old_sHMD,"mergeTolerance", 1e-6)
@@ -237,6 +237,7 @@ def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str]
             new_dict["castellatedMeshControls"]["refinementSurfaces"][name] = {}
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["faceZone"] = name
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"] = level
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["patchInto"] = {"type": "wall"}
 
 
 def writeMeshCommands():
@@ -281,10 +282,9 @@ def setExternalPatch(regionList: list, name: str):
         commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + region +"/patchInfo/type -set patch;")
     return commands
 
-def set_sHMD_external_patch(regionList: list, name: str):
-    file = FoamFile("./system/snappyHexMeshDict")
+def set_sHMD_external_patch(new_dict:dict, regionList: list, name: str):
     for region in regionList:
-        file["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][region]["patchInfo"]["type"] = "patch"
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][region]["patchInfo"]["type"] = "patch"
 
 def getStepSurfaces(fullPath):
     with open(fullPath, 'r') as StepFile:
@@ -315,7 +315,7 @@ def validateNames(names: list[str]):
 def getLocationInMesh(gmsh, volTag: int):
     coords = []
     # First try center of mass
-    coords = gmsh.model.occ.getCenterOfMass(3,volTag)
+    coords = list(gmsh.model.occ.getCenterOfMass(3,volTag))
     
     if gmsh.model.isInside(3,volTag,coords):
         print("Found by center of mass")
@@ -357,7 +357,7 @@ def removeFaceLabelsOnVolumes(gmsh):
     faces = gmsh.model.getEntities(2)
     for face in faces:
         adj = gmsh.model.getAdjacencies(face[0],face[1])
-        if adj[0] != []:
+        if adj[0].size > 0:
             name = gmsh.model.getEntityName(face[0],face[1])
             if name != "":
                 gmsh.model.removeEntityName(name)
@@ -366,7 +366,7 @@ def writeEdgeMesh(gmsh, surfaces: list, name: str, geoPath: str):
     edges = set() # using set to avoid duplicates
     for face in surfaces:
         edges.update(gmsh.model.getAdjacencies(2,face)[1]) # add edge tags to set
-    gmsh.model.addPhysicalGroup(1,edges,-1,name)
+    gmsh.model.addPhysicalGroup(1,list(edges),-1,name)
     print("Writing " + os.path.join(geoPath,name+"_edge.vtk"))
     if not os.path.exists(os.path.join(geoPath,"edges")):
         os.makedirs(os.path.join(geoPath,"edges"))
@@ -403,16 +403,16 @@ def read_snappy_step_dict():
     file = FoamFile("./system/snappyStepDict")
     print(file)
 
-def write_block_mesh_dict(boudingBox:list,dx,dy,dz):
+def write_block_mesh_dict(boudingBox:list,dx:list[float]):
     x_len = boudingBox[3]-boudingBox[0]
     y_len = boudingBox[4]-boudingBox[1]
     z_len = boudingBox[5]-boudingBox[2]
-    x_cells = math.ceil(x_len/dx)
-    y_cells = math.ceil(y_len/dy)
-    z_cells = math.ceil(z_len/dz)
-    x_buffer = ((x_cells*dx)-x_len)/2.0
-    y_buffer = ((y_cells*dy)-y_len)/2.0
-    z_buffer = ((z_cells*dz)-z_len)/2.0
+    x_cells = math.ceil(x_len/dx[0])
+    y_cells = math.ceil(y_len/dx[1])
+    z_cells = math.ceil(z_len/dx[2])
+    x_buffer = ((x_cells*dx[0])-x_len)/2.0
+    y_buffer = ((y_cells*dx[1])-y_len)/2.0
+    z_buffer = ((z_cells*dx[2])-z_len)/2.0
     vertices = [
             ["$xMin", "$yMin", "$zMin"],
             ["$xMax", "$yMin", "$zMin"],
@@ -461,9 +461,13 @@ def write_snappy_step_dict_template():
         except OSError as e:
             print(f"Error: Could not delete '{file_path}'. Reason: {e}")
     file["gmsh"] = {"meshSizeMax": 1000, "meshSizeMin": 0,"meshSizeFactor": 1,"meshSizeFromCurvature": 90,"meshAlgorithm": 6, "scaling": 1}
-    file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "overwriteRefinements": False}
+    file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "overwriteRefinements": False}
     file["locationInMesh"] = {}
-
+ 
+def read_snappy_step_dict():
+    file_path = "./system/snappyStepDict"
+    file = FoamFile(file_path)
+    return file.as_dict()
 
     
     
