@@ -80,7 +80,7 @@ def write_sHMD_feature_edges(new_dict:dict, names: list[str], old_dict:dict, def
         else:
             level = default_level
 
-        new_dict["castellatedMeshControls"]["features"].append({"file": "\"edge/"+name+"_edge.vtk\"", "level": level})
+        new_dict["castellatedMeshControls"]["features"].append({"file": "\"edges/"+name+"_edge.vtk\"", "level": level})
 
 
 def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
@@ -113,7 +113,7 @@ def initialize_sHMD():
     except:
         old_sHMD = None
     new_dict = {}
-
+    new_dict["#includeEtc"] = "\"caseDicts/mesh/generation/snappyHexMeshDict.cfg\""
     new_dict["castellatedMesh"] = check_old_dict(old_sHMD,"castellatedMesh", "on")
     new_dict["snap"] = check_old_dict(old_sHMD,"snap", "on")
     new_dict["addLayers"] = check_old_dict(old_sHMD,"addLayers", "off")
