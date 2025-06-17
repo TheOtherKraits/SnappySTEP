@@ -324,7 +324,7 @@ def getLocationInMesh(gmsh, volTag: int):
     
     # try center of bounding box
     xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,volTag)
-    coords = ((xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2)
+    coords = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
     if gmsh.model.isInside(3,volTag,coords):
         print("Found by bounding box center")
@@ -340,7 +340,7 @@ def getLocationInMesh(gmsh, volTag: int):
         print("Grid Search: "+str(element)+"x"+str(element))
         for xi in x:
             for yi in y:
-                coords = (xi, yi, z)
+                coords = [xi, yi, z]
                 if gmsh.model.isInside(3,volTag,coords):
                     print("Found by grid search")
                     print(coords)
@@ -468,6 +468,11 @@ def read_snappy_step_dict():
     file_path = "./system/snappyStepDict"
     file = FoamFile(file_path)
     return file.as_dict()
+
+def write_mesh_quality_dict():
+    file_path = "./system/meshQualityDict"
+    file = FoamFile(file_path)
+    file["#includeEtc"] = "\"caseDicts/mesh/generation/meshQualityDict.cfg\""
 
     
     
