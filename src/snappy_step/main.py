@@ -19,12 +19,12 @@ def runSnappyStep(file_name,v,vf):
         exit(1)
 
     # Read Config
-    with open("./system/snappyStep.toml", "rb") as f:
-        try:
-            config = read_snappy_step_dict()
-        except:
-            print("There seems to be a problem with snappyStepDict. Please check for format errors. Exiting.")
-            exit(1)
+
+    try:
+        config = read_snappy_step_dict()
+    except:
+        print("There seems to be a problem with snappyStepDict. Please check for format errors. Exiting.")
+        exit(1)
 
     if "locationInMesh" in config:  
         print("Using locationInMesh coordinates defined in config")
@@ -364,6 +364,8 @@ def runSnappyStep(file_name,v,vf):
     write_sHMD(new_sHMD)
     if config["snappyHexMeshSetup"]["generateBlockMeshDict"]:
         write_block_mesh_dict(model_bounding_box,config["snappyHexMeshSetup"]["backgroundMeshSize"])
+    if not os.path.isfile("./system/meshQualityDict"): # Write base meshMeshQualityDict if one does not exits
+        write_mesh_quality_dict()
     
     # Write mesh split command
     writeSplitCommand(defaultZone)
