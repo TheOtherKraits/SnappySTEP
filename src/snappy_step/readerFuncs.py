@@ -1,3 +1,4 @@
+import re
 import os
 from foamlib import FoamFile, FoamCase
 import math
