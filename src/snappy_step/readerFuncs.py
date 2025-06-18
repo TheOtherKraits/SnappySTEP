@@ -1,23 +1,7 @@
-import re
 import os
 from foamlib import FoamFile, FoamCase
 import math
 
-
-def regexStepBodyNames(fullPath): # Just regex all text?
-    with open(fullPath, 'r') as StepFile:
-        stepText = StepFile.read()
-        bodyNames = re.findall(r"MANIFOLD_SOLID_BREP\(\'(.*?)\'\,\#", stepText)
-        bodyNames = validateNames(bodyNames)
-        return bodyNames
-
-def regexStepShellNames(fullPath): # Just regex all text?
-    with open(fullPath, 'r') as StepFile:
-        stepText = StepFile.read()
-        shellNames = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", stepText)
-        shellNames = validateNames(shellNames)
-        print(shellNames)
-        return shellNames
     
 def getVolumeNames(gmsh):
     ent = gmsh.model.getEntities(3)
@@ -54,19 +38,6 @@ def writeCommands(fileName: str, commands: list):
     with open(fileName, 'w') as script:
         script.write("\n".join(commands))
 
-def writeFoamDictionaryEdge(names: list[str]):
-    commands = [] # initialize list
-    sub_commands = []
-    commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/explicitFeatureSnap -set on;")
-    commands.append("foamDictionary system/snappyHexMeshDict -entry snapControls/implicitFeatureSnap -set off;")
-    # sub_commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/features -set ")
-    # sub_commands.append("(")
-    for name in names:
-        commands.append("sed -i -e 's#"+name+".eMesh#"+"edges/"+name+"_edge.vtk"+"#g' system/snappyHexMeshDict")
-        # sub_commands.append(" { file \""+"edges/"+name+"_edge.vtk;\" level 1; }")
-    # sub_commands.append(" )")
-    # commands.append("".join(sub_commands))
-    return commands
 
 def write_sHMD_feature_edges(new_dict:dict, names: list[str], old_dict:dict, default_level):
     new_dict["snapControls"]["explicitFeatureSnap"] = True
@@ -82,18 +53,6 @@ def write_sHMD_feature_edges(new_dict:dict, names: list[str], old_dict:dict, def
 
         new_dict["castellatedMeshControls"]["features"].append({"file": "\"edges/"+name+"_edge.vtk\"", "level": level})
 
-
-def writeFoamDictionaryGeo(name: str, regions: list[str]) -> None:
-    commands = [] # use append to add to list
-    commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -remove") # clear any existing regions
-    if regions != []: # Check if empty
-        commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions -add \"{}\"") # re add regions
-        for i, element in enumerate(regions):
-            commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions/" + element +" -add {}")
-            commands.append("foamDictionary system/snappyHexMeshDict -entry geometry/" + name + "/regions/" + element +"/name -add "+ element +";")
-          
-    commands.append("\n") # add new line to end
-    return commands
 
 def write_sHMD_Geo(new_dict:dict, name: str, regions: list[str]) -> None:
     # file = FoamFile("./system/snappyHexMeshDict")
@@ -131,36 +90,6 @@ def check_old_dict(old_dict, key, default_value):
     else:
         return default_value
 
-def writeFoamDictionarySurf(names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
-    commands = [] # use append to add to list
-    nContacts = []
-    flatPairs = sum(pairs, []) # flattens pairs list into single list
-    for i, element in enumerate(volumeTags):
-        nContacts.append(flatPairs.count(element)) # counts number of interfaces for each volume
-    # Sort volumes by number of contacts
-    nContacts, volumeTags, volumeNames, coordinate = zip(*sorted(zip(nContacts, volumeTags, volumeNames,coordinate)))
-    for i, element in enumerate(volumeNames):
-        if element == volumeNames[-1]:
-            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/insidePoint -set \"(" + " ".join(str(x) for x in coordinate[i]) + ")\";")
-            break
-        k = volumeTags[i] # Tag of volume
-        for j, tag in enumerate(pairs): # Find first insance of volume in pairs
-            if k in tag:
-                break
-            else:
-                continue
-
-        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/cellZone -add " + element + ";")
-        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/mode -add insidePoint;")
-        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + names[j] + "/insidePoint -add \"(" + " ".join(str(x) for x in coordinate[i]) + ")\";")
-        # print("Generated commands for ", element)
-        # remove used interface from list
-        names.pop(j)
-        pairs.pop(j)
-    
-    # write file
-    commands.append("\n") # add new line to end
-    return commands, element
 
 def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
     nContacts = []
@@ -189,21 +118,6 @@ def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs
         pairs.pop(j)
     return element
 
-def writeRefinementRegions(name: str, regions: list[str]) -> None:
-    commands = [] # use append to add to list
-    
-    commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions -remove") # remove any existing regions
-    if regions != []: # Check if empty
-        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions -add \"{}\"") # add regions sub dict
-        for i, element in enumerate(regions):
-            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +" -add {}")
-            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/level -add \"(2 2)\";")
-            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/patchInfo -add \"{}\";")
-            commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + element +"/patchInfo/type -add wall;")
-    else:
-        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/faceZone -add " + name + ";")
-    commands.append("\n") # add new line to end
-    return commands
 
 def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str], old_dict, defaulLevel: list[int]) -> None:
     # file = FoamFile("./system/snappyHexMeshDict")
@@ -238,19 +152,6 @@ def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str]
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["faceZone"] = name
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"] = level
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["patchInto"] = {"type": "wall"}
-
-
-def writeMeshCommands():
-    commands = []
-    commands.append("snappyHexMeshConfig -explicitFeatures")
-    commands.append("blockMesh")
-    commands.append("./snappyStep.sh")
-    # commands.append("surfaceFeatures")
-    commands.append("snappyHexMesh -overwrite")
-    commands.append("./snappyStepSplitMeshRegions.sh")
-    commands.append("checkMesh")
-    fileName = "snappyStepGenerateMesh.sh"
-    writeCommands(fileName,commands)
   
 
 def writeSplitCommand(defaultZone: str):
@@ -260,46 +161,16 @@ def writeSplitCommand(defaultZone: str):
     writeCommands(fileName,commands)
  
 
-def writeFoamDictionaryExternalGroups(external_regions: list, external_tag: list, faceSets: dict, name):
-    commands = []
-    for iter, patch in enumerate(external_regions):
-        for key in faceSets:
-            if external_tag[iter][1] in faceSets[key]:
-                commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + patch +"/patchInfo/inGroups -add \"(" + key +")\";")
-                commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + patch +"/patchInfo/type -set patch;")
-                continue
-    return commands
-
-
 def flatten(arg):
     if not isinstance(arg, list): # if not list
         return [arg]
     return [x for sub in arg for x in flatten(sub)]
 
-def setExternalPatch(regionList: list, name: str):
-    commands = []
-    for region in regionList:
-        commands.append("foamDictionary system/snappyHexMeshDict -entry castellatedMeshControls/refinementSurfaces/" + name + "/regions/" + region +"/patchInfo/type -set patch;")
-    return commands
 
 def set_sHMD_external_patch(new_dict:dict, regionList: list, name: str):
     for region in regionList:
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][region]["patchInfo"]["type"] = "patch"
 
-def getStepSurfaces(fullPath):
-    with open(fullPath, 'r') as StepFile:
-        StepText = StepFile.read()
-    # print(StepText)
-    Names = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'(.*?)\'\,\(#", StepText)
-    surfaceLines = re.findall(r"SHELL_BASED_SURFACE_MODEL\(\'.*?\'\,\((#\d+)", StepText)
-    nSurfaces = [0] * len(Names)
-    for iter, line in enumerate(surfaceLines):
-        exp = re.compile(line + r"=OPEN_SHELL\(\'.*?\'\,\(([#\d+\,?]+)\)")
-        tempList = re.findall(exp,StepText)
-        # print(tempList[0])
-        nSurfaces[iter] = tempList[0].count(",") +1 
-    Names = validateNames(Names)
-    return Names, nSurfaces
 
 def validateNames(names: list[str]):
     for element, name in enumerate(names):
@@ -475,6 +346,3 @@ def write_mesh_quality_dict():
     file["#includeEtc"] = "\"caseDicts/mesh/generation/meshQualityDict.cfg\""
 
     
-    
-    
-
