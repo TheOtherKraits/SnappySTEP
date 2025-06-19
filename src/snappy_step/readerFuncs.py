@@ -346,4 +346,20 @@ def write_mesh_quality_dict():
     file = FoamFile(file_path)
     file["#includeEtc"] = "\"caseDicts/mesh/generation/meshQualityDict.cfg\""
 
+def retrive_old_dict_user_entries(old_dict, new_dict):
+    for key, value in old_dict:
+        if key == "geometry":
+            continue
+        elif key == "refinementSurfaces":
+            continue
+        elif key == "refinementRegions":
+            continue
+        elif isinstance(value, dict) and key in new_dict:
+            retrive_old_dict_user_entries(old_dict[key], new_dict[key])
+        elif key not in new_dict and (isinstance(value, str) or isinstance(value, int) or isinstance(value, float)):
+            new_dict[key] = value
+        else:
+            continue
+            
+
     
