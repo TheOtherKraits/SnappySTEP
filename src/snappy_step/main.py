@@ -2,7 +2,6 @@ import argparse
 import gmsh
 import os
 from .readerFuncs import *
-import tomllib
 
 
 def run_snappy_step(file_name,v,vf):
@@ -130,11 +129,6 @@ def run_snappy_step(file_name,v,vf):
         print(*surf_names)
         make_groups = True
         snappy_step_groups_dict = dict(zip(surf_names, surf_tags)) # Combine into dictionary for easy acces
-  
-    # print(len(outDimTagsMap[:][:]))
-    # if any(len(sub_list) > 1 for sub_list in outDimTagsMap):
-    #     print("geometry tags of face groups changed. Support for this to be added later. Please fully imprint surfaces in CAD. Exiting")
-    #     exit(1)
 
     # Assign surface names
     for iter, group in enumerate(surf_tags):
@@ -313,7 +307,6 @@ def run_snappy_step(file_name,v,vf):
             for iter, tag in enumerate(snappy_step_groups_dict[key]):
                 if iter != 0:
                     compAdj = gmsh.model.getAdjacencies(2,snappy_step_groups_dict[key][iter][1])
-                    # if not setAdj == set([compAdj[iter][0],compAdj[iter][1]]):
                     if not setAdj == set([compAdj[0][0],compAdj[0][1]]):
                         print("interface group " + key + " contains surfaces between multiple volume pairs. Please split into groups of single volume pairs. Exiting.")
                         gmsh.finalize()
@@ -327,7 +320,7 @@ def run_snappy_step(file_name,v,vf):
             if edge_mesh:
                 writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geo_path)
 
-    # Write snappyHexMeshDic
+    # Write snappyHexMeshDict
     
     print("Configuring snappyHexMeshDict")
     old_sHMD , new_sHMD = initialize_sHMD()
@@ -343,14 +336,12 @@ def run_snappy_step(file_name,v,vf):
     write_sHMD_Geo(new_sHMD,os.path.splitext(os.path.basename(step_file))[0],external_regions)
     write_sHMD_refinement_surfaces(new_sHMD,os.path.splitext(os.path.basename(step_file))[0],external_regions, old_sHMD, config["snappyHexMeshSetup"]["defaultSurfaceRefinement"])
     # Interfaces
-    # for i, element in enumerate(unique_interface_names_list):
     for element in unique_interface_names_list:
         # pass empty region list since each interface only has the single region
         write_sHMD_Geo(new_sHMD,element,[])
         write_sHMD_refinement_surfaces(new_sHMD,element,[], old_sHMD, config["snappyHexMeshSetup"]["defaultSurfaceRefinement"])
 
     # Refinement Surfaces commands and get name default zone
-    # surfReturn = writeFoamDictionarySurf(unique_interface_names_list.copy(),vol_pair.copy(),vol_names,[el[1] for el in vol_tags],point_inside)
     default_zone = write_sHMD_refinement_surfaces_cellZone(new_sHMD,unique_interface_names_list.copy(),vol_pair.copy(),vol_names,[el[1] for el in vol_tags],point_inside)
 
     # Set external groups as type patch
@@ -358,7 +349,6 @@ def run_snappy_step(file_name,v,vf):
         set_sHMD_external_patch(new_sHMD,set_patch_list, os.path.splitext(os.path.basename(step_file))[0])
     print("Done.")
     if edge_mesh:
-        # commands.extend(writeFoamDictionaryEdge([os.path.splitext(os.path.basename(step_file))[0]] + unique_interface_names_list))
         write_sHMD_feature_edges(new_sHMD,[os.path.splitext(os.path.basename(step_file))[0]] + unique_interface_names_list, old_sHMD, config["snappyHexMeshSetup"]["defaultEdgeRefinement"])
     # Write dictionaries
     write_sHMD(new_sHMD)
