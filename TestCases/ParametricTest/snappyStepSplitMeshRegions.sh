@@ -1,1 +1,0 @@
-splitMeshRegions -cellZones -defaultRegionName SmallBody -useFaceZones -overwrite
