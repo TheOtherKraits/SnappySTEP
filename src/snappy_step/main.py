@@ -7,13 +7,13 @@ from .readerFuncs import *
 def run_snappy_step(file_name,v,vf):
     
     
-    ext = [".stp", ".step", ".STP", ".STEP"]
-    geo_path = getGeoPath()
+    extension = [".stp", ".step", ".STP", ".STEP"]
+    geometry_path = get_geometry_path()
     files = []
 
     # Check for OpenFOAM case structure
 
-    if geo_path is None:
+    if geometry_path is None:
         print("Please run from OpenFOAM case root directory.")
         exit(1)
 
@@ -28,7 +28,7 @@ def run_snappy_step(file_name,v,vf):
     if "locationInMesh" in config:  
         print("Using locationInMesh coordinates defined in config")
         for key in config["locationInMesh"]:
-            new_key = validateNames([key])
+            new_key = validate_names([key])
             config["locationInMesh"][new_key[0]] = config["locationInMesh"].pop(key)
 
     else:
@@ -43,8 +43,8 @@ def run_snappy_step(file_name,v,vf):
     
     # Find geometry files
     if file_name is None:
-        for file in os.listdir(geo_path):
-            if file.endswith(tuple(ext)):
+        for file in os.listdir(geometry_path):
+            if file.endswith(tuple(extension)):
                 files.append(file)
     
         if len(files) == 0:
@@ -55,7 +55,7 @@ def run_snappy_step(file_name,v,vf):
             exit(1)   
         else:
             print(files[0]+" found")
-            step_file = os.path.join(geo_path, files[0])
+            step_file = os.path.join(geometry_path, files[0])
     else:
         if os.path.isabs(file_name):
             if os.path.isfile(file_name):
@@ -89,14 +89,14 @@ def run_snappy_step(file_name,v,vf):
     gmsh.model.occ.synchronize()
 
     # How many volumes before coherence
-    n_vol = len(gmsh.model.getEntities(3))
+    number_volumes = len(gmsh.model.getEntities(3))
 
     # Remove extra names face names. Prevent issues when tags change.
-    removeFaceLabelsOnVolumes(gmsh)
+    remove_face_labels_on_volumes(gmsh)
 
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
-    if n_vol > 1:
+    if number_volumes > 1:
         gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
         gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
@@ -105,7 +105,7 @@ def run_snappy_step(file_name,v,vf):
 
     # Check coherence results
     volumes = gmsh.model.getEntities(3)
-    if len(volumes) != n_vol:
+    if len(volumes) != number_volumes:
         print("Coherence changed number of volumes. Check geometry. Exiting")
         gmsh.finalize()
         exit(1)
@@ -115,14 +115,14 @@ def run_snappy_step(file_name,v,vf):
 
     # Get Geometry Names
     print('Getting Names of Bodies')
-    vol_names, vol_tags = getVolumeNames(gmsh)
+    vol_names, vol_tags = get_volume_names(gmsh)
     print("Found Volumes:")
     print(*vol_names)
 
 
     # Get surfaces
     print("Getting Surface Names")
-    surf_names, surf_tags, patch_tags = getSurfaceNames(gmsh)
+    surf_names, surf_tags, patch_tags = get_surface_names(gmsh)
 
     if len(surf_names)>0:
         print("Found Surfaces:")
@@ -135,20 +135,20 @@ def run_snappy_step(file_name,v,vf):
         for surf in group:
             gmsh.model.setEntityName(2,surf[1],surf_names[iter])
 
-    for i, element in enumerate(vol_names): # loop through all Volume entries
-        gmsh.model.setEntityName(3,vol_tags[i][1],element) # Adds names to gmsh entites
+    for element_index, element in enumerate(vol_names): # loop through all Volume entries
+        gmsh.model.setEntityName(3,vol_tags[element_index][1],element) # Adds names to gmsh entites
     print('Volume names assigned')
 
     print("Getting locationInMesh coordinates")
     # get inside points for each volume
     point_inside = []
-    for i, element in enumerate(volumes):
-        print(vol_names[i]+":")
-        if "locationInMesh" in config and vol_names[i] in config["locationInMesh"]:
-            point_inside.append(config["locationInMesh"][vol_names[i]])
+    for element_index, element in enumerate(volumes):
+        print(vol_names[element_index]+":")
+        if "locationInMesh" in config and vol_names[element_index] in config["locationInMesh"]:
+            point_inside.append(config["locationInMesh"][vol_names[element_index]])
             print("Using coordinates in config file.")
         else:
-            point_inside.append(getLocationInMesh(gmsh,element[1]))
+            point_inside.append(get_location_in_mesh(gmsh,element[1]))
     
     print('Identifying contacts')
 
@@ -160,9 +160,9 @@ def run_snappy_step(file_name,v,vf):
     interface_names = []
     interface_list = []
     for element in interfaces:
-        adj = gmsh.model.getAdjacencies(element[0],element[1])
-        interface_vol_pair.append([adj[0][0],adj[0][1]])
-        name_pair = [gmsh.model.getEntityName(3,adj[0][0]), gmsh.model.getEntityName(3,adj[0][1])] # Gets names of both volumes
+        adjacent = gmsh.model.getAdjacencies(element[0],element[1])
+        interface_vol_pair.append([adjacent[0][0],adjacent[0][1]])
+        name_pair = [gmsh.model.getEntityName(3,adjacent[0][0]), gmsh.model.getEntityName(3,adjacent[0][1])] # Gets names of both volumes
         name_pair.sort # sorts names for consistency
         interface_names.append(name_pair[0] + "_to_" + name_pair[1]) #Adds name to list
         interface_list.append(element) # List rather than set for use later
@@ -188,11 +188,11 @@ def run_snappy_step(file_name,v,vf):
     external_regions = [] # This will be used in the foamDict script
     external_patches = []
     patches_for_edge_mesh = []
-    for i, element in enumerate(volumes):
+    for element_index, element in enumerate(volumes):
         any_external = False # Don't need to make entry in dictionary if there are no external surfaces for this volume
         bounds = gmsh.model.getBoundary([element],True,False,False)
         is_external = []
-        for j, face in enumerate(bounds):
+        for face in bounds:
             # Find surfaces that bound more than one volume
             if face in interfaces:
                 is_external.append(False)
@@ -200,22 +200,17 @@ def run_snappy_step(file_name,v,vf):
                 is_external.append(True)
         if any(is_external):
             external_list = []
-            for k, face in enumerate(bounds):
-                # print([surfTag for surfTag in surf_tags])
-                # print([item for sub_list in surf_tags for item in sub_list])
-                if (2,face[1]) in [item for sub_list in surf_tags for item in sub_list] and is_external[k]:
-                # if face[1] in surf_tags and is_external[k]:
-                # if face[1] in [surfTag[1] for surfTag in surfTagPairs] and is_external[k]:
+            for face_index, face in enumerate(bounds):
+                if (2,face[1]) in [item for sub_list in surf_tags for item in sub_list] and is_external[face_index]:
                     external_patches.append(face[1])
-                elif is_external[k]:
+                elif is_external[face_index]:
                     external_list.append(face[1]) # Gets face tag
                     if not any_external:
-                        any_external = True
-                    # counter = counter + 1        
+                        any_external = True     
         
         if any_external: # Don't need to make entry in dictionary if there are no external surfaces for this volume
-            external_regions.append(vol_names[i]+"_default") # This will be used in the foamDict script
-            gmsh.model.addPhysicalGroup(2,external_list,-1,vol_names[i]+"_default")
+            external_regions.append(vol_names[element_index]+"_default") # This will be used in the foamDict script
+            gmsh.model.addPhysicalGroup(2,external_list,-1,vol_names[element_index]+"_default")
             patches_for_edge_mesh.extend(external_list)
 
     # Check that all patches are either internal or external
@@ -262,34 +257,34 @@ def run_snappy_step(file_name,v,vf):
     gmsh.model.removePhysicalGroups([])
     # Write corresponding edge mesh
     if edge_mesh:
-        writeEdgeMesh(gmsh,patches_for_edge_mesh,os.path.basename(step_file).split('.')[0],geo_path)
+        write_edge_mesh(gmsh,patches_for_edge_mesh,os.path.basename(step_file).split('.')[0],geometry_path)
     #Create physical group for each interface volume pair
     unique_interface_names_set = set(interface_names)
     
     # interfaces not in snappy step surfaces
-    vol_pair = [] # This will be used in the foamDict script
+    volume_pair = [] # This will be used in the foamDict script
     unique_interface_names_list = []
     for element in unique_interface_names_set:
         patches = []
-        for j, name in enumerate(interface_names):
-            if interface_list[j][1] in patch_tags:
+        for name_index, name in enumerate(interface_names):
+            if interface_list[name_index][1] in patch_tags:
                 continue
             elif name == element:
-                patches.append(interface_list[j][1]) # This will be used in the foamDict script
-                idx = j
+                patches.append(interface_list[name_index][1]) # This will be used in the foamDict script
+                idx = name_index
             else:
                continue
         if not patches: # skip adding to physical group and lists if patch list is empty
             continue
-        vol_pair.append(interface_vol_pair[idx])
+        volume_pair.append(interface_vol_pair[idx])
         unique_interface_names_list.append(element)
         gmsh.model.addPhysicalGroup(2,patches,-1,element)
-        print("Writing " + os.path.join(geo_path,element+".stl"))
-        gmsh.write(os.path.join(geo_path,element+".stl"))
+        print("Writing " + os.path.join(geometry_path,element+".stl"))
+        gmsh.write(os.path.join(geometry_path,element+".stl"))
         print("Done.")
         gmsh.model.removePhysicalGroups([])
         if edge_mesh:
-            writeEdgeMesh(gmsh, patches, element, geo_path)
+            write_edge_mesh(gmsh, patches, element, geometry_path)
     
 
     # interfaces in snappy step surfaces
@@ -301,9 +296,9 @@ def run_snappy_step(file_name,v,vf):
             else:
                 continue
             unique_interface_names_list.append(key)
-            adj = gmsh.model.getAdjacencies(2,snappy_step_groups_dict[key][0][1])
-            vol_pair.append([adj[0][0],adj[0][1]])
-            setAdj = set([adj[0][0],adj[0][1]])
+            adjacent = gmsh.model.getAdjacencies(2,snappy_step_groups_dict[key][0][1])
+            volume_pair.append([adjacent[0][0],adjacent[0][1]])
+            setAdj = set([adjacent[0][0],adjacent[0][1]])
             for iter, tag in enumerate(snappy_step_groups_dict[key]):
                 if iter != 0:
                     compAdj = gmsh.model.getAdjacencies(2,snappy_step_groups_dict[key][iter][1])
@@ -312,13 +307,13 @@ def run_snappy_step(file_name,v,vf):
                         gmsh.finalize()
                         exit(1)
 
-            print("Writing " + os.path.join(geo_path,key+".stl"))
-            gmsh.write(os.path.join(geo_path,key+".stl"))
+            print("Writing " + os.path.join(geometry_path,key+".stl"))
+            gmsh.write(os.path.join(geometry_path,key+".stl"))
             print("Done.")
             gmsh.model.removePhysicalGroups([])
             # Write corresponding edge mesh
             if edge_mesh:
-                writeEdgeMesh(gmsh, patches_for_edge_mesh, key, geo_path)
+                write_edge_mesh(gmsh, patches_for_edge_mesh, key, geometry_path)
 
     # Write snappyHexMeshDict
     
@@ -342,7 +337,7 @@ def run_snappy_step(file_name,v,vf):
         write_sHMD_refinement_surfaces(new_sHMD,element,[], old_sHMD, config["snappyHexMeshSetup"]["defaultSurfaceRefinement"])
 
     # Refinement Surfaces commands and get name default zone
-    default_zone = write_sHMD_refinement_surfaces_cellZone(new_sHMD,unique_interface_names_list.copy(),vol_pair.copy(),vol_names,[el[1] for el in vol_tags],point_inside)
+    default_zone = write_sHMD_refinement_surfaces_cellZone(new_sHMD,unique_interface_names_list.copy(),volume_pair.copy(),vol_names,[el[1] for el in vol_tags],point_inside)
 
     # Set external groups as type patch
     if make_groups:
@@ -358,7 +353,7 @@ def run_snappy_step(file_name,v,vf):
         write_mesh_quality_dict()
     
     # Write mesh split command
-    writeSplitCommand(default_zone)
+    write_split_command(default_zone)
     os.chmod("./snappyStepSplitMeshRegions.sh",0o755)
 
     # See results
@@ -375,11 +370,11 @@ def run_snappy_step(file_name,v,vf):
     gmsh.finalize()
     return
 
-def snappyStepCleanup():
+def snappy_step_cleanup():
     gmsh.finalize()
     return
 
-def mainFunc():
+def main_func():
     parser = argparse.ArgumentParser(description='Process STEP geometry to generate STL files for SnappyHexMesh using GMSH')
     parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
     parser.add_argument('-vf', action='store_true',help='Display faces and labels. User can choose to continue or stop after inspecting output') # view faces after coherence and don't generate mesh
@@ -388,8 +383,8 @@ def mainFunc():
     args = parser.parse_args()
     run_snappy_step(args.file, args.v,args.vf)
 
-def snappystep(file_name = None):
+def snappy_step(file_name = None):
     run_snappy_step(file_name,False,False)
 
 if __name__ == "__main__":
-    mainFunc()
+    main_func()

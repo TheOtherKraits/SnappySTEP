@@ -12,12 +12,12 @@ for item in items:
         print("running " + item)
         with chdir(os.path.join(item)):
             try:
-                snappy_step.mainFunc()
+                snappy_step.main_func()
                 completed.append(item)
             except:
                 failed.append(item)
                 print(item + " Failed.")
-                snappy_step.snappyStepCleanup()
+                snappy_step.snappy_step_cleanup()
         
 
 

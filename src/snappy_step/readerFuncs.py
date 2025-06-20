@@ -4,39 +4,39 @@ from foamlib import FoamFile, FoamCase
 import math
 
     
-def getVolumeNames(gmsh):
-    ent = gmsh.model.getEntities(3)
+def get_volume_names(gmsh):
+    entities = gmsh.model.getEntities(3)
     names = []
-    for e in ent:
-        n = gmsh.model.getEntityName(e[0], e[1])
-        names.append(n.split("/")[-1]) # Return substring after last slash
-        names = validateNames(names)
-    return names, ent
+    for entity in entities:
+        long_name = gmsh.model.getEntityName(entity[0], entity[1])
+        names.append(long_name.split("/")[-1]) # Return substring after last slash
+        names = validate_names(names)
+    return names, entities
 
-def getSurfaceNames(gmsh):
-    ent = gmsh.model.getEntities(2)
+def get_surface_names(gmsh):
+    entities = gmsh.model.getEntities(2)
     names = []
     tags = []
     patch_tags = []
-    for e in ent:
-        n = gmsh.model.getEntityName(e[0], e[1])
-        name = n.split("/")[-1]
+    for entity in entities:
+        long_name = gmsh.model.getEntityName(entity[0], entity[1])
+        name = long_name.split("/")[-1]
         if not name:
             continue
         elif name in names:
             idx = names.index(name)
-            tags[idx].append(e)
-            patch_tags.append(e[1])
+            tags[idx].append(entity)
+            patch_tags.append(entity[1])
         else:
             names.append(name) # Return substring after last slash
-            tags.append([e])
-            patch_tags.append(e[1])
-    names = validateNames(names)
+            tags.append([entity])
+            patch_tags.append([entity])
+    names = validate_names(names)
     return names, tags, patch_tags
 
 
-def writeCommands(fileName: str, commands: list):
-    with open(fileName, 'w') as script:
+def write_commands(file_name: str, commands: list):
+    with open(file_name, 'w') as script:
         script.write("\n".join(commands))
 
 
@@ -92,62 +92,60 @@ def check_old_dict(old_dict, key, default_value):
         return default_value
 
 
-def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs: list[int, int],volumeNames: list[str],volumeTags: list[int],coordinate: list[float,float,float]) -> None:
-    nContacts = []
-    flatPairs = sum(pairs, []) # flattens pairs list into single list
-    for i, element in enumerate(volumeTags):
-        nContacts.append(flatPairs.count(element)) # counts number of interfaces for each volume
+def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs: list[int, int],volume_names: list[str],volume_tags: list[int],coordinate: list[float,float,float]) -> None:
+    number_contacts = []
+    flat_pairs = sum(pairs, []) # flattens pairs list into single list
+    for i, element in enumerate(volume_tags):
+        number_contacts.append(flat_pairs.count(element)) # counts number of interfaces for each volume
     # Sort volumes by number of contacts
-    nContacts, volumeTags, volumeNames, coordinate = zip(*sorted(zip(nContacts, volumeTags, volumeNames,coordinate)))
+    number_contacts, volume_tags, volume_names, coordinate = zip(*sorted(zip(number_contacts, volume_tags, volume_names,coordinate)))
     # file = FoamFile("./system/snappyHexMeshDict")
-    for i, element in enumerate(volumeNames):
-        if element == volumeNames[-1]:
+    for element_index, element in enumerate(volume_names):
+        if element == volume_names[-1]:
             new_dict["castellatedMeshControls"]["insidePoint"] = coordinate[i]
             break
-        k = volumeTags[i] # Tag of volume
-        for j, tag in enumerate(pairs): # Find first insance of volume in pairs
-            if k in tag:
+        element_tag = volume_tags[element_index] # Tag of volume
+        for tag_index, tag in enumerate(pairs): # Find first insance of volume in pairs
+            if element_tag in tag:
                 break
             else:
                 continue
-        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[j]]["cellZone"] = element
-        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[j]]["mode"] = "insidePoint"
-        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[j]]["insidePoint"] = coordinate[i]
-        # print("Generated commands for ", element)
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["cellZone"] = element
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["mode"] = "insidePoint"
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["insidePoint"] = coordinate[i]
         # remove used interface from list
-        names.pop(j)
-        pairs.pop(j)
+        names.pop(tag_index)
+        pairs.pop(tag_index)
     return element
 
 
-def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str], old_dict, defaulLevel: list[int]) -> None:
-    # file = FoamFile("./system/snappyHexMeshDict")
+def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str], old_dict, default_level: list[int]) -> None:
     if regions: # Check if empty
         if old_dict is not None:
             try:
                 level = old_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"]
             except:
-                level = defaulLevel
+                level = default_level
         else:
-            level = defaulLevel
+            level = default_level
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name] = {"level": level, "patchInfo": {"type": "wall"},"regions": {}}
         for i, element in enumerate(regions):
             if old_dict is not None:
                 try:
                     level = old_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][element]["level"]
                 except:
-                    level = defaulLevel
+                    level = default_level
             else:
-                level = defaulLevel
+                level = default_level
             new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][element] = {"level": level, "patchInfo": {"type": "wall"}}
     else:
         if old_dict is not None:
             try:
                 level = old_dict["castellatedMeshControls"]["refinementSurfaces"][name]["level"]
             except:
-                level = defaulLevel
+                level = default_level
         else:
-            level = defaulLevel
+            level = default_level
         if name not in new_dict["castellatedMeshControls"]["refinementSurfaces"]:
             new_dict["castellatedMeshControls"]["refinementSurfaces"][name] = {}
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["faceZone"] = name
@@ -155,11 +153,11 @@ def write_sHMD_refinement_surfaces(new_dict: dict, name: str, regions: list[str]
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["patchInto"] = {"type": "wall"}
   
 
-def writeSplitCommand(defaultZone: str):
+def write_split_command(default_zone: str):
     commands = []
-    commands.append("splitMeshRegions -cellZones -defaultRegionName " + defaultZone + " -useFaceZones -overwrite")
-    fileName = "snappyStepSplitMeshRegions.sh"
-    writeCommands(fileName,commands)
+    commands.append("splitMeshRegions -cellZones -defaultRegionName " + default_zone + " -useFaceZones -overwrite")
+    file_name = "snappyStepSplitMeshRegions.sh"
+    write_commands(file_name,commands)
  
 
 def flatten(arg):
@@ -168,40 +166,37 @@ def flatten(arg):
     return [x for sub in arg for x in flatten(sub)]
 
 
-def set_sHMD_external_patch(new_dict:dict, regionList: list, name: str):
-    for region in regionList:
+def set_sHMD_external_patch(new_dict:dict, region_list: list, name: str):
+    for region in region_list:
         new_dict["castellatedMeshControls"]["refinementSurfaces"][name]["regions"][region]["patchInfo"]["type"] = "patch"
 
 
-def validateNames(names: list[str]):
-    for element, name in enumerate(names):
+def validate_names(names: list[str]):
+    for name_index, name in enumerate(names):
         if name.startswith("."):
             name = name.lstrip(".")
-        names[element] = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+        names[name_index] = re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
-    # names = [name.strip().replace(" ", "_") for name in names]
-    # names = [name.replace("(", "") for name in names]
-    # names = [name.replace(")", "") for name in names]
     return names
 
-def getLocationInMesh(gmsh, volTag: int):
-    coords = []
+def get_location_in_mesh(gmsh, volume_tag: int):
+    coordinates = []
     # First try center of mass
-    coords = list(gmsh.model.occ.getCenterOfMass(3,volTag))
+    coordinates = list(gmsh.model.occ.getCenterOfMass(3,volume_tag))
     
-    if gmsh.model.isInside(3,volTag,coords):
+    if gmsh.model.isInside(3,volume_tag,coordinates):
         print("Found by center of mass")
-        print(coords)
-        return coords
+        print(coordinates)
+        return coordinates
     
     # try center of bounding box
-    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,volTag)
-    coords = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
+    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,volume_tag)
+    coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
-    if gmsh.model.isInside(3,volTag,coords):
+    if gmsh.model.isInside(3,volume_tag,coordinates):
         print("Found by bounding box center")
-        print(coords)
-        return coords
+        print(coordinates)
+        return coordinates
 
     # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
     z = (zmax+zmin)/2
@@ -212,11 +207,11 @@ def getLocationInMesh(gmsh, volTag: int):
         print("Grid Search: "+str(element)+"x"+str(element))
         for xi in x:
             for yi in y:
-                coords = [xi, yi, z]
-                if gmsh.model.isInside(3,volTag,coords):
+                coordinates = [xi, yi, z]
+                if gmsh.model.isInside(3,volume_tag,coordinates):
                     print("Found by grid search")
-                    print(coords)
-                    return coords
+                    print(coordinates)
+                    return coordinates
 
     print("Point not found.")
     exit(1)
@@ -225,24 +220,24 @@ def linspace(a, b, n):
     diff = (float(b) - a)/(n - 1)
     return [diff * i + a  for i in range(1, n-1)] # Skips first and last
 
-def removeFaceLabelsOnVolumes(gmsh):
+def remove_face_labels_on_volumes(gmsh):
     faces = gmsh.model.getEntities(2)
     for face in faces:
-        adj = gmsh.model.getAdjacencies(face[0],face[1])
-        if adj[0].size > 0:
+        adjacent = gmsh.model.getAdjacencies(face[0],face[1])
+        if adjacent[0].size > 0:
             name = gmsh.model.getEntityName(face[0],face[1])
             if name != "":
                 gmsh.model.removeEntityName(name)
                 print("removed "+ name)
-def writeEdgeMesh(gmsh, surfaces: list, name: str, geoPath: str):
+def write_edge_mesh(gmsh, surfaces: list, name: str, geometry_path: str):
     edges = set() # using set to avoid duplicates
     for face in surfaces:
         edges.update(gmsh.model.getAdjacencies(2,face)[1]) # add edge tags to set
     gmsh.model.addPhysicalGroup(1,list(edges),-1,name)
-    print("Writing " + os.path.join(geoPath,name+"_edge.vtk"))
-    if not os.path.exists(os.path.join(geoPath,"edges")):
-        os.makedirs(os.path.join(geoPath,"edges"))
-    gmsh.write(os.path.join(geoPath,"edges",name+"_edge.vtk"))
+    print("Writing " + os.path.join(geometry_path,name+"_edge.vtk"))
+    if not os.path.exists(os.path.join(geometry_path,"edges")):
+        os.makedirs(os.path.join(geometry_path,"edges"))
+    gmsh.write(os.path.join(geometry_path,"edges",name+"_edge.vtk"))
     print("Done.")
     gmsh.model.removePhysicalGroups([])
 
@@ -255,13 +250,13 @@ def ask_yes_no(question):
             return False
         else:
             print("Invalid input. Please enter 'yes' or 'no' (y/n).")
-def getGeoPath(): 
-    geoPath = "./constant/geometry"
-    if not os.path.exists(geoPath):
-        geoPath = "./constant/triSurface"
-        if not os.path.exists(geoPath):
-            geoPath = None
-    return geoPath
+def get_geometry_path(): 
+    geometry_path = "./constant/geometry"
+    if not os.path.exists(geometry_path):
+        geometry_path = "./constant/triSurface"
+        if not os.path.exists(geometry_path):
+            geometry_path = None
+    return geometry_path
 
 def write_sHMD(new_dict):
     fn = "./system/snappyHexMeshDict"
@@ -275,10 +270,10 @@ def read_snappy_step_dict():
     file = FoamFile("./system/snappyStepDict")
     print(file)
 
-def write_block_mesh_dict(boudingBox:list,dx:list[float]):
-    x_len = boudingBox[3]-boudingBox[0]
-    y_len = boudingBox[4]-boudingBox[1]
-    z_len = boudingBox[5]-boudingBox[2]
+def write_block_mesh_dict(bouding_box:list,dx:list[float]):
+    x_len = bouding_box[3]-bouding_box[0]
+    y_len = bouding_box[4]-bouding_box[1]
+    z_len = bouding_box[5]-bouding_box[2]
     x_cells = math.ceil(x_len/dx[0])
     y_cells = math.ceil(y_len/dx[1])
     z_cells = math.ceil(z_len/dx[2])
@@ -299,12 +294,12 @@ def write_block_mesh_dict(boudingBox:list,dx:list[float]):
     case = FoamCase(".")
     with case.block_mesh_dict as file: # Load Dict
         file["defaultPatch"]={"name":  "background", "type": "patch"}
-        file["xMin"] = boudingBox[0] - x_buffer
-        file["xMax"] = boudingBox[3] + x_buffer
-        file["yMin"] = boudingBox[1] - y_buffer
-        file["yMax"] = boudingBox[4] + y_buffer
-        file["zMin"] = boudingBox[2] - z_buffer
-        file["zMax"] = boudingBox[5] + z_buffer
+        file["xMin"] = bouding_box[0] - x_buffer
+        file["xMax"] = bouding_box[3] + x_buffer
+        file["yMin"] = bouding_box[1] - y_buffer
+        file["yMax"] = bouding_box[4] + y_buffer
+        file["zMin"] = bouding_box[2] - z_buffer
+        file["zMax"] = bouding_box[5] + z_buffer
         file["xCells"] = x_cells
         file["yCells"] = y_cells
         file["zCells"] = z_cells
