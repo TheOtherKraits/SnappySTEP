@@ -26,7 +26,7 @@ def get_surface_names(gmsh):
         elif name in names:
             idx = names.index(name)
             tags[idx].append(entity)
-            patch_tags.append(entity[1])
+            patch_tags.append(entity)
         else:
             names.append(name) # Return substring after last slash
             tags.append([entity])
