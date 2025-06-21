@@ -1,3 +1,3 @@
-from snappy_step.main import mainFunc
+from snappy_step.main import main_func
 
-mainFunc()
+main_func()

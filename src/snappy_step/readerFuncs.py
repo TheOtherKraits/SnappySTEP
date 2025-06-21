@@ -102,7 +102,7 @@ def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs
     # file = FoamFile("./system/snappyHexMeshDict")
     for element_index, element in enumerate(volume_names):
         if element == volume_names[-1]:
-            new_dict["castellatedMeshControls"]["insidePoint"] = coordinate[i]
+            new_dict["castellatedMeshControls"]["insidePoint"] = coordinate[element_index]
             break
         element_tag = volume_tags[element_index] # Tag of volume
         for tag_index, tag in enumerate(pairs): # Find first insance of volume in pairs
@@ -112,7 +112,7 @@ def write_sHMD_refinement_surfaces_cellZone(new_dict:dict,names: list[str],pairs
                 continue
         new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["cellZone"] = element
         new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["mode"] = "insidePoint"
-        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["insidePoint"] = coordinate[i]
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][names[tag_index]]["insidePoint"] = coordinate[element_index]
         # remove used interface from list
         names.pop(tag_index)
         pairs.pop(tag_index)
