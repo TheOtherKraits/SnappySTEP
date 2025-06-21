@@ -10,7 +10,7 @@ FILE_DESCRIPTION(
 
 FILE_NAME(
 /* name */ 'EmbeddedRegionNamedContact.step',
-/* time_stamp */ '2025-04-27T16:28:51-05:00',
+/* time_stamp */ '2025-06-21T13:54:36-05:00',
 /* author */ (''),
 /* organization */ (''),
 /* preprocessor_version */ 'ST-DEVELOPER v20.1',
@@ -813,7 +813,7 @@ SOLID_ANGLE_UNIT()
 #720=SHAPE_REPRESENTATION('',(#461,#24),#700);
 #721=PRODUCT_DEFINITION_CONTEXT('part definition',#735,'design');
 #722=PRODUCT_DEFINITION('EmbeddedRegionNamedContact',
-'EmbeddedRegionNamedContact v2',#726,#721);
+'EmbeddedRegionNamedContact v3',#726,#721);
 #723=PRODUCT_DEFINITION('Interior','Interior',#727,#721);
 #724=PRODUCT_DEFINITION('Exterior','Exterior',#728,#721);
 #725=PRODUCT_DEFINITION('contactFaces','contactFaces',#729,#721);
@@ -821,8 +821,8 @@ SOLID_ANGLE_UNIT()
 #727=PRODUCT_DEFINITION_FORMATION('',$,#738);
 #728=PRODUCT_DEFINITION_FORMATION('',$,#739);
 #729=PRODUCT_DEFINITION_FORMATION('',$,#740);
-#730=PRODUCT_RELATED_PRODUCT_CATEGORY('EmbeddedRegionNamedContact v2',
-'EmbeddedRegionNamedContact v2',(#737));
+#730=PRODUCT_RELATED_PRODUCT_CATEGORY('EmbeddedRegionNamedContact v3',
+'EmbeddedRegionNamedContact v3',(#737));
 #731=PRODUCT_RELATED_PRODUCT_CATEGORY('Interior','Interior',(#738));
 #732=PRODUCT_RELATED_PRODUCT_CATEGORY('Exterior','Exterior',(#739));
 #733=PRODUCT_RELATED_PRODUCT_CATEGORY('contactFaces','contactFaces',(#740));
@@ -832,7 +832,7 @@ SOLID_ANGLE_UNIT()
 'Core Data for Automotive Mechanical Design Process');
 #736=PRODUCT_CONTEXT('part definition',#735,'mechanical');
 #737=PRODUCT('EmbeddedRegionNamedContact',
-'EmbeddedRegionNamedContact v2',$,(#736));
+'EmbeddedRegionNamedContact v3',$,(#736));
 #738=PRODUCT('Interior','Interior',$,(#736));
 #739=PRODUCT('Exterior','Exterior',$,(#736));
 #740=PRODUCT('contactFaces','contactFaces',$,(#736));
