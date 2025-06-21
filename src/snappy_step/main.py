@@ -267,7 +267,7 @@ def run_snappy_step(file_name,v,vf):
     for element in unique_interface_names_set:
         patches = []
         for name_index, name in enumerate(interface_names):
-            if interface_list[name_index][1] in patch_tags:
+            if any(interface_list[name_index] in sublist for sublist in patch_tags):
                 continue
             elif name == element:
                 patches.append(interface_list[name_index][1]) # This will be used in the foamDict script
