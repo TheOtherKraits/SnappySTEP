@@ -191,12 +191,10 @@ def remove_face_labels_on_volumes(gmsh:gmsh):
 def assign_cell_zones_to_interfaces(volumes:list[volume], interfaces:list[interface]) -> volume:
     volumes.sort(key=lambda x: len(x.interface_patches), reverse=False)
     for element in volumes:
-        for surface in interfaces:
-            if surface == interfaces[-1]:
-                return element
-            elif element not in surface.volume_pair:
-                continue
-            elif surface.cell_zone_volume is None:
+        if element == volumes[-1]:
+            return element
+        for surface in element.interface_patches:
+            if surface.cell_zone_volume is None:
                 surface.cell_zone_volume = element
                 break
             else:
