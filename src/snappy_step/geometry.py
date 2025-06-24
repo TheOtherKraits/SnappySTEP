@@ -9,7 +9,7 @@ class volume:
         self.interface_tags = []
         self.exterior_patches = {}
         self.exterior_patch_edges = {}
-        self.interface_patches = {}
+        self.interface_patches = []
         self.name = gmsh.model.getEntityName(3,tag)
         self.face_dim_tags = gmsh.model.getBoundary([(3,tag)],False,False,False)
         self.inside_point = []
@@ -88,8 +88,8 @@ def process_geometry(gmsh:gmsh,config:dict):
                     for face in groups[interface_name]:       
                         edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
                     interfaces.append(interface(volume_a,volume_b,interface_name,groups[interface_name],edges))
-                    volume_a.interface_patches[interface_name] = groups[interface_name]
-                    volume_b.interface_patches[interface_name] = groups[interface_name]
+                    volume_a.interface_patches.append(interfaces[-1])
+                    volume_b.interface_patches.append(interfaces[-1])
     return volumes, interfaces
 
                             
