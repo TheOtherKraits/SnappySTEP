@@ -75,6 +75,7 @@ def run_snappy_step(file_name,v,vf):
     imprint_geometry(gmsh)
     validate_gmsh_names(gmsh)
     volumes, interfaces = process_geometry(gmsh, config)
+    default_volume = assign_cell_zones_to_interfaces(volumes,interfaces)
     print(volumes)
     print(interfaces)
 
