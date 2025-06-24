@@ -50,6 +50,7 @@ class interface:
         self.face_tags = face_tags
         self.name = name
         self.edge_tags = edge_tags
+        self.cell_zone_volume = None
         
 
 def process_geometry(gmsh:gmsh,config:dict):
@@ -88,7 +89,7 @@ def process_geometry(gmsh:gmsh,config:dict):
                         edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
                     interfaces.append(interface(volume_a,volume_b,interface_name,groups[interface_name],edges))
                     volume_a.interface_patches[interface_name] = groups[interface_name]
-                    volume_a.interface_patches[interface_name] = groups[interface_name]
+                    volume_b.interface_patches[interface_name] = groups[interface_name]
     return volumes, interfaces
 
                             
@@ -186,3 +187,21 @@ def remove_face_labels_on_volumes(gmsh:gmsh):
             if name is not None:
                 gmsh.model.removeEntityName(name)
                 print("removed "+ name)
+
+def assign_cell_zones_to_interfaces(volumes:list[volume], interfaces:list[interface]) -> volume:
+    volumes.sort(key=lambda x: len(x.interface_patches), reverse=False)
+    for element in volumes:
+        for surface in interfaces:
+            if surface == interfaces[-1]:
+                return element
+            elif element not in surface.volume_pair:
+                continue
+            elif surface.cell_zone_volume is None:
+                surface.cell_zone_volume = element
+                break
+            else:
+                continue
+                
+                
+
+        
