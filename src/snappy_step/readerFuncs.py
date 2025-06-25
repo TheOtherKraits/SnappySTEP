@@ -266,9 +266,6 @@ def write_sHMD(new_dict):
     for key in new_dict:
         file[key] = new_dict[key]
 
-def read_snappy_step_dict():
-    file = FoamFile("./system/snappyStepDict")
-    print(file)
 
 def write_block_mesh_dict(bouding_box:list,dx:list[float]):
     x_len = bouding_box[3]-bouding_box[0]
