@@ -188,7 +188,7 @@ def remove_face_labels_on_volumes(gmsh:gmsh):
                 gmsh.model.removeEntityName(name)
                 print("removed "+ name)
 
-def assign_cell_zones_to_interfaces(volumes:list[volume], interfaces:list[interface]) -> volume:
+def assign_cell_zones_to_interfaces(volumes:list[volume]) -> volume:
     volumes.sort(key=lambda x: len(x.interface_patches), reverse=False)
     for element in volumes:
         if element == volumes[-1]:
