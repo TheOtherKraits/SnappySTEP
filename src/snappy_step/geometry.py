@@ -200,6 +200,16 @@ def assign_cell_zones_to_interfaces(volumes:list[volume]) -> volume:
             else:
                 continue
                 
-                
+def generate_surface_mesh(gmsh:gmsh,config:dict):
+    print("Generating Surface Mesh")
+    gmsh.option.setNumber("Mesh.Algorithm",config["gmsh"]["meshAlgorithm"])
+    gmsh.option.setNumber("Mesh.MeshSizeFactor",config["gmsh"]["meshSizeFactor"])
+    gmsh.option.setNumber("Mesh.MeshSizeMin",config["gmsh"]["meshSizeMin"])
+    gmsh.option.setNumber("Mesh.MeshSizeMax",config["gmsh"]["meshSizeMax"])
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature",config["gmsh"]["meshSizeFromCurvature"])
+    gmsh.model.mesh.generate(2)
+
+    # export settings
+    gmsh.option.set_number("Mesh.StlOneSolidPerSurface",2)
 
         
