@@ -12,6 +12,7 @@ def run_snappy_step(file_name,v,vf):
     
     # Find geometry files
     step_file = find_geometry_file(file_name, geometry_path)
+    step_name = os.path.split(step_file)[-1].split('.')[0]
 
     # Begin gmsh operations
     gmsh.initialize()
@@ -21,12 +22,14 @@ def run_snappy_step(file_name,v,vf):
     volumes, interfaces = process_geometry(gmsh, config)
     default_volume = assign_cell_zones_to_interfaces(volumes)
     model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
-    print(volumes)
-    print(interfaces)
 
     # Generate Mesh
+    generate_surface_mesh(gmsh,config)
 
     # Write Mesh
+    write_surface_meshes(gmsh, volumes, interfaces, step_name, geometry_path)
+    if config["snappyHexMeshSetup"]["edgeMesh"]:
+        write_edge_meshes(gmsh, volumes, interfaces, geometry_path)
 
     # Write Dictionaries
     old_dict, new_dict = initialize_sHMD()
@@ -34,6 +37,7 @@ def run_snappy_step(file_name,v,vf):
         write_block_mesh_dict(model_bounding_box,config["snappyHexMeshSetup"]["backgroundMeshSize"])
     if not os.path.isfile("./system/meshQualityDict"): # Write base meshMeshQualityDict if one does not exits
         write_mesh_quality_dict()
+    configure_sHMD_geometry(new_dict, volumes, interfaces, step_name)
 
     # Write mesh split command
     write_split_command(default_volume.name)
