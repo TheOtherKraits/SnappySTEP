@@ -23,6 +23,20 @@ def run_snappy_step(file_name,v,vf):
     default_volume = assign_cell_zones_to_interfaces(volumes)
     model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
 
+    # optionally view faces and volumes and exit before mesh
+    if vf:
+        gmsh.option.set_number("Geometry.VolumeLabels",1)
+        gmsh.option.set_number("Geometry.Surfaces",1)
+        gmsh.option.set_number("Geometry.SurfaceLabels",1)
+        gmsh.option.set_number("Geometry.LabelType",3)
+        print("gmsh window open. Close gmsh window to continue.")
+        gmsh.fltk.run()
+        ans = ask_yes_no("Would you like to continue?")
+        gmsh.fltk.finalize()
+        if not ans:
+            gmsh.finalize()
+            exit(1)
+
     # Generate Mesh
     generate_surface_mesh(gmsh,config)
 
@@ -38,16 +52,28 @@ def run_snappy_step(file_name,v,vf):
     if not os.path.isfile("./system/meshQualityDict"): # Write base meshMeshQualityDict if one does not exits
         write_mesh_quality_dict()
     configure_sHMD_geometry(new_dict, volumes, interfaces, step_name)
+    configure_sHMD_refinement_surfaces(new_dict, old_dict, volumes, interfaces, step_name, config['snappyHexMeshSetup']['defaultSurfaceRefinement'])
+    # Edge mesh part here
+    if config['snappyHexMeshSetup']["edgeMesh"]:
+        configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config['snappyHexMeshSetup']['defaultEdgeRefinement'])
+    # Future layers
+    write_sHMD(new_dict)
 
     # Write mesh split command
     write_split_command(default_volume.name)
     
-
-
-
-    
-
-
+    # Optionally view mesh
+    if v:
+        gmsh.option.set_number("Geometry.VolumeLabels",1)
+        gmsh.option.set_number("Geometry.Surfaces",1)
+        gmsh.option.set_number("Geometry.SurfaceLabels",1)
+        gmsh.option.set_number("Geometry.LabelType",3)
+        print("gmsh window open. Close gmsh window to continue.")
+        gmsh.fltk.run()
+        gmsh.fltk.finalize()
+    print("All geometry files and scripts generated. Done.")
+    # Last GMSH command
+    gmsh.finalize()
 
 
 def snappy_step_cleanup():
