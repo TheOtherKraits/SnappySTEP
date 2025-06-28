@@ -66,18 +66,11 @@ def find_geometry_file(file_name:str, geometry_path:str)->str:
             print(files[0]+" found")
             step_file = os.path.join(geometry_path, files[0])
     else:
-        if os.path.isabs(file_name):
-            if os.path.isfile(file_name):
+        if os.path.isfile(file_name):
                 step_file = file_name
-            else:
-                print(file_name + " is not a file. Exiting.")
-                exit(1)
         else:
-            if os.path.isfile(file_name):
-                 step_file = file_name
-            else:
-                print(file_name + " is not a file. Exiting.")
-                exit(1)
+            print(file_name + " is not a file. Exiting.")
+            exit(1)
     return step_file
 
 def write_snappy_step_dict_template():
