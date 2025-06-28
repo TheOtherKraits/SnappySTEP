@@ -46,7 +46,7 @@ def run_snappy_step(file_name,v,vf):
         write_edge_meshes(gmsh, volumes, interfaces, geometry_path)
 
     # Write Dictionaries
-    old_dict, new_dict = initialize_sHMD()
+    old_dict, new_dict = initialize_sHMD(config)
     if config["snappyHexMeshSetup"]["generateBlockMeshDict"]:
         write_block_mesh_dict(model_bounding_box,config["snappyHexMeshSetup"]["backgroundMeshSize"])
     if not os.path.isfile("./system/meshQualityDict"): # Write base meshMeshQualityDict if one does not exits

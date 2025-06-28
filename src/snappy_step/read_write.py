@@ -180,7 +180,7 @@ def ask_yes_no(question):
             return False
         else:
             print("Invalid input. Please enter 'yes' or 'no' (y/n).")
-def initialize_sHMD():
+def initialize_sHMD(config:dict):
     file = FoamFile("./system/snappyHexMeshDict")
     try:
         old_sHMD = file.as_dict()
@@ -197,6 +197,8 @@ def initialize_sHMD():
     new_dict["castellatedMeshControls"]["refinementSurfaces"] = {}
     new_dict["snapControls"] = {}
     new_dict["mergeToleance"] = check_old_dict(old_sHMD,"mergeTolerance", 1e-6)
+    if "multiRegionFeatureSnap" in config["snappyHexMeshSetup"]:
+        new_dict["snapControls"]["multiRegionFeatureSnap"] = config["snappyHexMeshSetup"]["multiRegionFeatureSnap"]
     return old_sHMD, new_dict
 
 def check_old_dict(old_dict, key, default_value):
