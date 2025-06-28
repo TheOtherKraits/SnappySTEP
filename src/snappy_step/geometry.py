@@ -41,7 +41,7 @@ class volume:
             self.inside_point =  config["locationInMesh"][self.name]
             print(f"Using coordiantes in config file for {self.name}.")
         else:
-            self.inside_point = get_location_in_mesh(self.gmsh,self.tag)
+            self.inside_point = get_location_in_mesh(self)
         
         
 class interface:
@@ -93,19 +93,19 @@ def process_geometry(gmsh:gmsh,config:dict):
     return volumes, interfaces
 
                             
-def get_location_in_mesh(gmsh:gmsh, volume_tag:int):
+def get_location_in_mesh(entity:volume):
     coordinates = []
     # First try center of mass
-    coordinates = list(gmsh.model.occ.getCenterOfMass(3,volume_tag))
-    if gmsh.model.isInside(3,volume_tag,coordinates):
+    coordinates = list(entity.gmsh.model.occ.getCenterOfMass(3,entity.tag))
+    if gmsh.model.isInside(3,entity.tag,coordinates):
         print("Found by center of mass")
         print(coordinates)
         return coordinates
     # try center of bounding box
-    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,volume_tag)
+    xmin, ymin, zmin, xmax, ymax, zmax = entity.gmsh.model.getBoundingBox(3,entity.tag)
     coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
-    if gmsh.model.isInside(3,volume_tag,coordinates):
+    if gmsh.model.isInside(3,entity.tag,coordinates):
         print("Found by bounding box center")
         print(coordinates)
         return coordinates
@@ -119,7 +119,7 @@ def get_location_in_mesh(gmsh:gmsh, volume_tag:int):
         for xi in x:
             for yi in y:
                 coordinates = [xi, yi, z]
-                if gmsh.model.isInside(3,volume_tag,coordinates):
+                if gmsh.model.isInside(3,entity.tag,coordinates):
                     print("Found by grid search")
                     print(coordinates)
                     return coordinates

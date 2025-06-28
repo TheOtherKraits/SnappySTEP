@@ -1,4 +1,3 @@
-import re
 import os
 from foamlib import FoamFile, FoamCase
 import math
@@ -23,11 +22,14 @@ def read_config()->dict:
         print("There seems to be a problem with snappyStepDict. Please check for format errors. Exiting.")
         exit(1)
 
-    if "locationInMesh" in config:  
-        print("Using locationInMesh coordinates defined in config")
-        for key in config["locationInMesh"]:
-            new_key = validate_name(key)
-            config["locationInMesh"][new_key[0]] = config["locationInMesh"].pop(key)
+    if "locationInMesh" in config:
+        if config["locationInMesh"]:
+            print("Using locationInMesh coordinates defined in config")
+            new_locations = {}
+            for old_key, value in config["locationInMesh"].items():
+                new_key = validate_name(old_key)
+                new_locations[new_key] = value
+            config["locationInMesh"] = new_locations
 
     else:
         config["locationInMesh"] = []
@@ -218,16 +220,16 @@ def write_surface_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[inter
     # Exterior Patches, single file
     gmsh.model.removePhysicalGroups([])
     for instance in volumes:
-        for patch, tags in instance.exterior_patches:
+        for patch, tags in instance.exterior_patches.items():
             gmsh.model.addPhysicalGroup(2,tags,-1,patch)
-    gmsh.write(os.path.join(path,step_name,".stl"))
+    gmsh.write(os.path.join(path,step_name+".stl"))
     gmsh.model.removePhysicalGroups([])
 
     # Interfaces, one per file
     for instance in interfaces:
         gmsh.model.removePhysicalGroups([])
         gmsh.model.addPhysicalGroup(2,instance.face_tags,-1,instance.name)
-        gmsh.write(os.path.join(path,instance.name,".stl"))
+        gmsh.write(os.path.join(path,instance.name+".stl"))
     gmsh.model.removePhysicalGroups([])
 
 def write_edge_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[interface], path):
@@ -235,15 +237,15 @@ def write_edge_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[interfac
         os.makedirs(os.path.join(path,"edges"))
     gmsh.model.removePhysicalGroups([])
     for instance in volumes:
-        for patch, tags in instance.exterior_patch_edges:
-            gmsh.model.addPhysicalGroup(1,tags,-1,patch)
-            gmsh.write(os.path.join(path,"edges",patch+"_edge",".vtk"))
+        for patch, tags in instance.exterior_patch_edges.items():
+            gmsh.model.addPhysicalGroup(1,list(tags),-1,patch)
+            gmsh.write(os.path.join(path,"edges",patch+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
 
     for instance in interfaces:
         gmsh.model.removePhysicalGroups([])
-        gmsh.model.addPhysicalGroup(2,instance.face_tags,-1,instance.name)
-        gmsh.write(os.path.join(path,"edges",instance.name+"_edge",".vtk"))
+        gmsh.model.addPhysicalGroup(1,list(instance.edge_tags),-1,instance.name)
+        gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
         
 def configure_sHMD_geometry(new_dict:dict, volumes: list[volume],interfaces: list[interface],step_name:str):
@@ -252,11 +254,11 @@ def configure_sHMD_geometry(new_dict:dict, volumes: list[volume],interfaces: lis
     new_dict["geometry"][step_name]["type"] = "triSurfaceMesh"
     new_dict["geometry"][step_name]["file"] = "\""+step_name+".stl"+"\""
     new_dict["geometry"][step_name]["regions"] = {}
-    for instanace in volumes:
-        for patch in instanace.exterior_patches:
-            new_dict["geometry"][step_name]["regions"][instanace.name] = {"name":instanace.name}
+    for instance in volumes:
+        for patch in instance.exterior_patches:
+            new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
-        new_dict["geometry"][instanace.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
+        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
     
  
 def configure_sHMD_refinement_surfaces(new_dict:dict, old_dict:dict, volumes: list[volume],interfaces: list[interface], step_name:str, config:dict):
