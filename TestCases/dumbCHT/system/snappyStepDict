@@ -30,4 +30,5 @@ snappyHexMeshSetup
 
 locationInMesh
 {
+    beer (0.001659234284100643 0.051002544725990716 0.085);
 }
