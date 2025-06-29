@@ -20,6 +20,8 @@ gmsh
 snappyHexMeshSetup
 {
     edgeMesh yes;
+    refinementRegions yes;
+    defaultRegionRefinement ((1 1));
     multiRegionFeatureSnap yes;
     generateBlockMeshDict yes;
     backgroundMeshSize (0.01 0.01 0.01);
