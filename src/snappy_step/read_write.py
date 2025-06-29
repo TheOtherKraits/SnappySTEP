@@ -95,7 +95,7 @@ def write_snappy_step_dict_template():
         except OSError as e:
             print(f"Error: Could not delete '{file_path}'. Reason: {e}")
     file["gmsh"] = {"meshSizeMax": 1000, "meshSizeMin": 0,"meshSizeFactor": 1,"meshSizeFromCurvature": 90,"meshAlgorithm": 6, "scaling": 1}
-    file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "overwriteRefinements": False}
+    file["snappyHexMeshSetup"] = {"edgeMesh": True, "refinementRegions": False,"multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "defaultRegionRefinement": [[1, 2]], "overwriteRefinements": False}
     file["locationInMesh"] = {}
 
 def write_block_mesh_dict(bouding_box: list, dx:list[float]):
@@ -246,7 +246,14 @@ def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step
         gmsh.write(os.path.join(path,instance.name+".stl"))
     gmsh.model.removePhysicalGroups([])
 
-def write_edge_meshes(gmsh, volumes: list[Volume],interfaces: list[Interface], path):
+def write_refinement_regions_meshes(volumes: list[Volume], path):
+    gmsh.model.removePhysicalGroups([])
+    for instance in volumes:
+        gmsh.model.addPhysicalGroup(2,instance.exterior_tags + instance.interface_tags, -1, instance.name)
+        gmsh.write(os.path.join(path,instance.name+".stl"))
+        gmsh.model.removePhysicalGroups([])
+
+def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], path):
     """ TODO """
     if not os.path.exists(os.path.join(path,"edges")):
         os.makedirs(os.path.join(path,"edges"))
@@ -263,7 +270,7 @@ def write_edge_meshes(gmsh, volumes: list[Volume],interfaces: list[Interface], p
         gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
         
-def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: list[Interface],step_name:str):
+def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: list[Interface],step_name: str, config:dict):
     """ TODO """
     # Geometry section
     new_dict["geometry"][step_name] = {}
@@ -275,6 +282,9 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
         new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
+    if config["snappyHexMeshSetup"]["refinementRegions"]:
+        for instance in volumes:
+            new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
     
  
 def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
@@ -289,8 +299,8 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
         level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
     new_dict["castellatedMeshControls"]["refinementSurfaces"][step_name] = {"level": level, "patchInfo": {"type": "wall"},"regions": {}}
     sub_strings = ["default", "wall"]
-    for instanace in volumes:
-        for patch in instanace.exterior_patches:
+    for instance in volumes:
+        for patch in instance.exterior_patches:
             if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
                 try:
                     level = old_dict["castellatedMeshControls"]["refinementSurfaces"][step_name]["regions"][patch]["level"]
@@ -307,7 +317,7 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
     for instance in interfaces:
         if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
             try:
-                level = old_dict["castellatedMeshControls"]["refinementSurfaces"][instanace.name]["level"]
+                level = old_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["level"]
             except:
                 level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
         else:
@@ -318,12 +328,24 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["mode"] = "insidePoint"
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_point
 
+def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: list[Volume], config: dict):
+    new_dict["castellatedMeshControls"]["refinementRegions"] = {}
+    for instance in volumes:
+        if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
+            try:
+                level = old_dict["castellatedMeshControls"]["refinementRegions"][instance.name]["level"]
+            except:
+                level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
+        else:
+            level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
+        new_dict["castellatedMeshControls"]["refinementRegions"][instance.name] = {"mode": "inside", "levels": level}
+
 def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config):
     """ TODO """
     new_dict["snapControls"]["explicitFeatureSnap"] = True
     new_dict["snapControls"]["implicitFeatureSnap"] = False
-    for instanace in volumes:
-        for patch in instanace.exterior_patches:
+    for instance in volumes:
+        for patch in instance.exterior_patches:
             file_path = "\"edges/"+patch+"_edge.vtk\""
             set_edge_mesh_entry(new_dict, old_dict, file_path, config)
     for instance in interfaces:
