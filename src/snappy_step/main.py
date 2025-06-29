@@ -47,7 +47,9 @@ def run_snappy_step(file_name,v,vf):
     # Write Mesh
     write_surface_meshes(volumes, interfaces, step_name, geometry_path)
     if config["snappyHexMeshSetup"]["edgeMesh"]:
-        write_edge_meshes(gmsh, volumes, interfaces, geometry_path)
+        write_edge_meshes(volumes, interfaces, geometry_path)
+    if config["snappyHexMeshSetup"]["refinementRegions"]:
+        write_refinement_regions_meshes(volumes, geometry_path)
 
     # Write Dictionaries
     old_dict, new_dict = initialize_sHMD(config)
@@ -55,12 +57,14 @@ def run_snappy_step(file_name,v,vf):
         write_block_mesh_dict(model_bounding_box,config["snappyHexMeshSetup"]["backgroundMeshSize"])
     if not os.path.isfile("./system/meshQualityDict"): # Write base meshMeshQualityDict if one does not exits
         write_mesh_quality_dict()
-    configure_sHMD_geometry(new_dict, volumes, interfaces, step_name)
+    configure_sHMD_geometry(new_dict, volumes, interfaces, step_name, config)
     configure_sHMD_refinement_surfaces(new_dict, old_dict, volumes, interfaces, step_name, config)
     new_dict['castellatedMeshControls']['insidePoint'] = default_volume.inside_point
     # Edge mesh part here
     if config['snappyHexMeshSetup']["edgeMesh"]:
         configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config)
+    if config["snappyHexMeshSetup"]["refinementRegions"]:
+        configure_sHMD_refinement_regions(new_dict, old_dict, volumes, config)
     # Future layers
     write_sHMD(new_dict)
 
