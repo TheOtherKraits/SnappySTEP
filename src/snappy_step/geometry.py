@@ -1,18 +1,18 @@
 import gmsh
 import re
 
-class volume:
-    def __init__(self,tag, gmsh:gmsh):
-        self.tag = tag
-        self.gmsh = gmsh
-        self.exterior_tags = []
-        self.interface_tags = []
-        self.exterior_patches = {}
-        self.exterior_patch_edges = {}
-        self.interface_patches = []
+class Volume:
+    """ TODO """
+    def __init__(self, tag: int):
+        self._tag: int = tag
+        self.exterior_tags: list[int] = []
+        self.interface_tags: list[int] = []
+        self.exterior_patches: dict = {}
+        self.exterior_patch_edges: dict = {}
+        self.interface_patches: list[int] = []
         self.name = gmsh.model.getEntityName(3,tag)
-        self.face_dim_tags = gmsh.model.getBoundary([(3,tag)],False,False,False)
-        self.inside_point = []
+        self.face_dim_tags: list[tuple[int,int]] = gmsh.model.getBoundary([(3,tag)], False, False, False)
+        self.inside_point: list[float] = []
         for dim_tag in self.face_dim_tags:
             if len(gmsh.model.getAdjacencies(2,dim_tag[1])[0]) == 1:
                 self.exterior_tags.append(dim_tag[1])
@@ -36,31 +36,33 @@ class volume:
                 self.exterior_patches[name] = [tag]
                 self.exterior_patch_edges[name] = set(gmsh.model.get_adjacencies(2,tag)[1])
 
-    def getInsidePoint(self,config:dict):
+    def get_inside_point(self, config: dict):
+        """ TODO """
         if "locationInMesh" in config and self.name in config["locationInMesh"]:
             self.inside_point =  config["locationInMesh"][self.name]
             print(f"Using coordiantes in config file for {self.name}.")
         else:
             self.inside_point = get_location_in_mesh(self)
         
-        
-class interface:
-    def __init__(self, volume_1:volume, volume_2:volume, name:str, face_tags:list[int],edge_tags:set[int]):
-        self.volume_pair = {volume_1, volume_2}
-        self.face_tags = face_tags
-        self.name = name
-        self.edge_tags = edge_tags
-        self.cell_zone_volume = None
+class Interface:
+    """ TODO """
+    def __init__(self, volume_1: Volume, volume_2: Volume, name:str, face_tags: list[int], edge_tags: set[int]):
+        self.volume_pair: set[Volume] = {volume_1, volume_2}
+        self.face_tags: list[int] = face_tags
+        self.name: str = name
+        self.edge_tags: set[int] = edge_tags
+        self.cell_zone_volume: Volume|None = None
         
 
-def process_geometry(gmsh:gmsh,config:dict):
-    volumes = []
-    interfaces = []
+def process_geometry(config: dict):
+    """ TODO """
+    volumes: list[Volume] = []
+    interfaces: list[Interface] = []
     volume_dim_tags = gmsh.model.getEntities(3)
     for dim_tag in volume_dim_tags:
-        volumes.append(volume(dim_tag[1],gmsh))
+        volumes.append(Volume(dim_tag[1]))
     for element in volumes:
-        element.getInsidePoint(config)
+        element.get_inside_point(config)
     for index_a, volume_a in enumerate(volumes):
         for index_b, volume_b in enumerate(volumes):
             if index_b <= index_a:
@@ -85,27 +87,28 @@ def process_geometry(gmsh:gmsh,config:dict):
                             groups[name].append(tag)
                 for interface_name in groups:
                     edges = set()
-                    for face in groups[interface_name]:       
+                    for face in groups[interface_name]:
                         edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
-                    interfaces.append(interface(volume_a,volume_b,interface_name,groups[interface_name],edges))
+                    interfaces.append(Interface(volume_a,volume_b,interface_name,groups[interface_name],edges))
                     volume_a.interface_patches.append(interfaces[-1])
                     volume_b.interface_patches.append(interfaces[-1])
     return volumes, interfaces
 
-                            
-def get_location_in_mesh(entity:volume):
+
+def get_location_in_mesh(entity: Volume):
+    """ TODO """
     coordinates = []
     # First try center of mass
-    coordinates = list(entity.gmsh.model.occ.getCenterOfMass(3,entity.tag))
-    if gmsh.model.isInside(3,entity.tag,coordinates):
+    coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tag))
+    if gmsh.model.isInside(3, entity._tag,coordinates):
         print("Found by center of mass")
         print(coordinates)
         return coordinates
     # try center of bounding box
-    xmin, ymin, zmin, xmax, ymax, zmax = entity.gmsh.model.getBoundingBox(3,entity.tag)
+    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,entity._tag)
     coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
-    if gmsh.model.isInside(3,entity.tag,coordinates):
+    if gmsh.model.isInside(3, entity._tag,coordinates):
         print("Found by bounding box center")
         print(coordinates)
         return coordinates
@@ -119,7 +122,7 @@ def get_location_in_mesh(entity:volume):
         for xi in x:
             for yi in y:
                 coordinates = [xi, yi, z]
-                if gmsh.model.isInside(3,entity.tag,coordinates):
+                if gmsh.model.isInside(3,entity._tag,coordinates):
                     print("Found by grid search")
                     print(coordinates)
                     return coordinates
@@ -127,6 +130,7 @@ def get_location_in_mesh(entity:volume):
     exit(1)
 
 def validate_name(name: str):
+    """ TODO """
     if name.startswith("."):
         name = name.lstrip(".")
     name = name.split("/")[-1]
@@ -134,10 +138,12 @@ def validate_name(name: str):
     return name
 
 def linspace(a, b, n):
+    """ TODO """
     diff = (float(b) - a)/(n - 1)
     return [diff * i + a  for i in range(1, n-1)] # Skips first and last
 
-def validate_gmsh_names(gmsh:gmsh):
+def validate_gmsh_names():
+    """ TODO """
     dim_tags = gmsh.model.getEntities(-1)
     for dim_tag in dim_tags:
         name = gmsh.model.getEntityName(dim_tag[0], dim_tag[1])
@@ -145,7 +151,8 @@ def validate_gmsh_names(gmsh:gmsh):
             name = validate_name(name)
             gmsh.model.setEntityName(dim_tag[0], dim_tag[1], name)
 
-def load_step_file(gmsh:gmsh, file_path, config):
+def load_step_file(file_path, config):
+    """ TODO """
     gmsh.option.setString('Geometry.OCCTargetUnit', 'M') # Set meters as working unit
     # Set Import Scaling
     if "gmsh" in config:
@@ -155,12 +162,13 @@ def load_step_file(gmsh:gmsh, file_path, config):
     gmsh.model.occ.importShapes(file_path,False)
     gmsh.model.occ.synchronize()
 
-def imprint_geometry(gmsh:gmsh):
+def imprint_geometry():
+    """ TODO """
     # How many volumes before coherence
     number_volumes = len(gmsh.model.getEntities(3))
 
     # Remove extra names face names. Prevent issues when tags change.
-    remove_face_labels_on_volumes(gmsh)
+    remove_face_labels_on_volumes()
 
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
@@ -178,7 +186,8 @@ def imprint_geometry(gmsh:gmsh):
         gmsh.finalize()
         exit(1)
 
-def remove_face_labels_on_volumes(gmsh:gmsh):
+def remove_face_labels_on_volumes():
+    """ TODO """
     faces = gmsh.model.getEntities(2)
     for face in faces:
         adjacent = gmsh.model.getAdjacencies(face[0],face[1])
@@ -188,7 +197,8 @@ def remove_face_labels_on_volumes(gmsh:gmsh):
                 gmsh.model.removeEntityName(name)
                 print("removed "+ name)
 
-def assign_cell_zones_to_interfaces(volumes:list[volume]) -> volume:
+def assign_cell_zones_to_interfaces(volumes:list[Volume]) -> Volume:
+    """ TODO """
     volumes.sort(key=lambda x: len(x.interface_patches), reverse=False)
     for element in volumes:
         if element == volumes[-1]:
@@ -200,7 +210,8 @@ def assign_cell_zones_to_interfaces(volumes:list[volume]) -> volume:
             else:
                 continue
                 
-def generate_surface_mesh(gmsh:gmsh,config:dict):
+def generate_surface_mesh(config: dict):
+    """ TODO """
     print("Generating Surface Mesh")
     gmsh.option.setNumber("Mesh.Algorithm",config["gmsh"]["meshAlgorithm"])
     gmsh.option.setNumber("Mesh.MeshSizeFactor",config["gmsh"]["meshSizeFactor"])
