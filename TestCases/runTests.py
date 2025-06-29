@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import snappy_step
 from contextlib import chdir
 import os
