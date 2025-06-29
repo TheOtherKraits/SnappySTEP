@@ -3,7 +3,11 @@ from .geometry import *
 from .read_write import *
 
 def run_snappy_step(file_name,v,vf):
-    
+    """
+    :param file_name: TODO
+    :param v: TODO
+    :v vf: TODO
+    """
     # Determine if in openfoam case structure and if it is .org or .com version
     geometry_path = get_geometry_path()
 
@@ -16,10 +20,10 @@ def run_snappy_step(file_name,v,vf):
 
     # Begin gmsh operations
     gmsh.initialize()
-    load_step_file(gmsh, step_file, config)
-    imprint_geometry(gmsh)
-    validate_gmsh_names(gmsh)
-    volumes, interfaces = process_geometry(gmsh, config)
+    load_step_file(step_file, config)
+    imprint_geometry()
+    validate_gmsh_names()
+    volumes, interfaces = process_geometry(config)
     default_volume = assign_cell_zones_to_interfaces(volumes)
     model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
 
@@ -38,10 +42,10 @@ def run_snappy_step(file_name,v,vf):
             exit(1)
 
     # Generate Mesh
-    generate_surface_mesh(gmsh,config)
+    generate_surface_mesh(config)
 
     # Write Mesh
-    write_surface_meshes(gmsh, volumes, interfaces, step_name, geometry_path)
+    write_surface_meshes(volumes, interfaces, step_name, geometry_path)
     if config["snappyHexMeshSetup"]["edgeMesh"]:
         write_edge_meshes(gmsh, volumes, interfaces, geometry_path)
 
