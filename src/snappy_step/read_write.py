@@ -249,8 +249,8 @@ def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step
 def write_refinement_regions_meshes(volumes: list[Volume], path):
     gmsh.model.removePhysicalGroups([])
     for instance in volumes:
-        gmsh.model.addPhysicalGroup(2,instance.exterior_tags + instance.interface_tags, -1, instance.name)
-        gmsh.write(os.path.join(path,instance.name+".stl"))
+        gmsh.model.addPhysicalGroup(2,instance.exterior_tags + instance.interface_tags, -1, instance.name+"_refinement_region")
+        gmsh.write(os.path.join(path,instance.name+"_refinement_region.stl"))
         gmsh.model.removePhysicalGroups([])
 
 def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], path):
@@ -281,10 +281,10 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
         for patch in instance.exterior_patches:
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
-        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
+        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}_refinement_region.stl\""}
     if config["snappyHexMeshSetup"]["refinementRegions"]:
         for instance in volumes:
-            new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
+            new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}_refinement_region.stl\""}
     
  
 def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
@@ -333,12 +333,12 @@ def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: l
     for instance in volumes:
         if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
             try:
-                level = old_dict["castellatedMeshControls"]["refinementRegions"][instance.name]["level"]
+                level = old_dict["castellatedMeshControls"]["refinementRegions"][instance.name+"_refinement_region"]["level"]
             except:
                 level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
         else:
             level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
-        new_dict["castellatedMeshControls"]["refinementRegions"][instance.name] = {"mode": "inside", "levels": level}
+        new_dict["castellatedMeshControls"]["refinementRegions"][instance.name+"_refinement_region"] = {"mode": "inside", "levels": level}
 
 def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config):
     """ TODO """
