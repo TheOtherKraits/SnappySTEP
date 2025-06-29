@@ -1,10 +1,14 @@
 import os
-from foamlib import FoamFile, FoamCase
 import math
-from .geometry import validate_name, volume, interface, gmsh
+
+import gmsh
+from foamlib import FoamFile, FoamCase
+
+from .geometry import validate_name, Volume, Interface
 
 
 def get_geometry_path(): 
+    """ TODO """
     geometry_path = "./constant/geometry"
     if not os.path.exists(geometry_path):
         geometry_path = "./constant/triSurface"
@@ -15,7 +19,8 @@ def get_geometry_path():
         exit(1)
     return geometry_path
 
-def read_config()->dict:
+def read_config() -> dict:
+    """ TODO """
     try:
         config = read_snappy_step_dict()
     except:
@@ -42,12 +47,14 @@ def read_config()->dict:
         edge_mesh = False
     return config
 
-def read_snappy_step_dict()->dict:
+def read_snappy_step_dict() -> dict:
+    """ TODO """
     file_path = "./system/snappyStepDict"
     file = FoamFile(file_path)
     return file.as_dict()
 
-def find_geometry_file(file_name:str, geometry_path:str)->str:
+def find_geometry_file(file_name: str, geometry_path: str) -> str:
+    """ TODO """
     # Find geometry files
     extension = [".stp", ".step", ".STP", ".STEP"]
     files = []
@@ -74,6 +81,10 @@ def find_geometry_file(file_name:str, geometry_path:str)->str:
     return step_file
 
 def write_snappy_step_dict_template():
+    """
+    Write snappy step dictionary template file. 
+    File should be at ./system/snappyStepDict
+    """
     file_path = "./system/snappyStepDict"
     file = FoamFile(file_path)
     if os.path.isfile(file_path):
@@ -87,7 +98,8 @@ def write_snappy_step_dict_template():
     file["snappyHexMeshSetup"] = {"edgeMesh": True, "multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "overwriteRefinements": False}
     file["locationInMesh"] = {}
 
-def write_block_mesh_dict(bouding_box:list,dx:list[float]):
+def write_block_mesh_dict(bouding_box: list, dx:list[float]):
+    """ TODO """
     x_len = bouding_box[3]-bouding_box[0]
     y_len = bouding_box[4]-bouding_box[1]
     z_len = bouding_box[5]-bouding_box[2]
@@ -137,12 +149,10 @@ def write_block_mesh_dict(bouding_box:list,dx:list[float]):
             file["mergePatchPairs"] = []
 
 def retrive_old_dict_user_entries(old_dict, new_dict):
+    """ TODO """
     for key, value in old_dict:
-        if key == "geometry":
-            continue
-        elif key == "refinementSurfaces":
-            continue
-        elif key == "refinementRegions":
+        if key in [ "geometry", "refinementSurfaces", "refinementRegions"]:
+            # Skip these keys - values should not be copied to new dict
             continue
         elif isinstance(value, dict) and key in new_dict:
             retrive_old_dict_user_entries(old_dict[key], new_dict[key])
@@ -152,11 +162,13 @@ def retrive_old_dict_user_entries(old_dict, new_dict):
             continue
 
 def write_mesh_quality_dict():
+    """ TODO """
     file_path = "./system/meshQualityDict"
     file = FoamFile(file_path)
     file["#includeEtc"] = "\"caseDicts/mesh/generation/meshQualityDict.cfg\""
 
 def write_sHMD(new_dict):
+    """ TODO """
     fn = "./system/snappyHexMeshDict"
     if os.path.isfile(fn):
         os.remove(fn)
@@ -165,6 +177,7 @@ def write_sHMD(new_dict):
         file[key] = new_dict[key]
 
 def ask_yes_no(question):
+    """ TODO """
     while True:
         response = input(f"{question} (yes or no): ").lower()
         if response in ["yes", "y"]:
@@ -173,7 +186,9 @@ def ask_yes_no(question):
             return False
         else:
             print("Invalid input. Please enter 'yes' or 'no' (y/n).")
-def initialize_sHMD(config:dict):
+
+def initialize_sHMD(config: dict):
+    """ TODO """
     file = FoamFile("./system/snappyHexMeshDict")
     try:
         old_sHMD = file.as_dict()
@@ -195,12 +210,14 @@ def initialize_sHMD(config:dict):
     return old_sHMD, new_dict
 
 def check_old_dict(old_dict, key, default_value):
+    """ TODO """
     if old_dict is not None and key in old_dict:
         return old_dict[key]
     else:
         return default_value
     
 def write_split_command(default_zone: str):
+    """ TODO """
     commands = []
     commands.append("splitMeshRegions -cellZones -defaultRegionName " + default_zone + " -useFaceZones -overwrite")
     file_name = "snappyStepSplitMeshRegions.sh"
@@ -208,10 +225,12 @@ def write_split_command(default_zone: str):
     os.chmod("./snappyStepSplitMeshRegions.sh",0o755)
 
 def write_commands(file_name: str, commands: list):
+    """ TODO """
     with open(file_name, 'w') as script:
         script.write("\n".join(commands))
 
-def write_surface_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[interface],step_name, path):
+def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step_name, path):
+    """ TODO """
     # Exterior Patches, single file
     gmsh.model.removePhysicalGroups([])
     for instance in volumes:
@@ -223,11 +242,12 @@ def write_surface_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[inter
     # Interfaces, one per file
     for instance in interfaces:
         gmsh.model.removePhysicalGroups([])
-        gmsh.model.addPhysicalGroup(2,instance.face_tags,-1,instance.name)
+        gmsh.model.addPhysicalGroup(2,instance.face_tags, -1, instance.name)
         gmsh.write(os.path.join(path,instance.name+".stl"))
     gmsh.model.removePhysicalGroups([])
 
-def write_edge_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[interface], path):
+def write_edge_meshes(gmsh, volumes: list[Volume],interfaces: list[Interface], path):
+    """ TODO """
     if not os.path.exists(os.path.join(path,"edges")):
         os.makedirs(os.path.join(path,"edges"))
     gmsh.model.removePhysicalGroups([])
@@ -243,7 +263,8 @@ def write_edge_meshes(gmsh:gmsh, volumes: list[volume],interfaces: list[interfac
         gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
         
-def configure_sHMD_geometry(new_dict:dict, volumes: list[volume],interfaces: list[interface],step_name:str):
+def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: list[Interface],step_name:str):
+    """ TODO """
     # Geometry section
     new_dict["geometry"][step_name] = {}
     new_dict["geometry"][step_name]["type"] = "triSurfaceMesh"
@@ -256,7 +277,8 @@ def configure_sHMD_geometry(new_dict:dict, volumes: list[volume],interfaces: lis
         new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}.stl\""}
     
  
-def configure_sHMD_refinement_surfaces(new_dict:dict, old_dict:dict, volumes: list[volume],interfaces: list[interface], step_name:str, config:dict):
+def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
+    """ TODO """
     # Exterior Surfaces
     if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
         try:
@@ -297,6 +319,7 @@ def configure_sHMD_refinement_surfaces(new_dict:dict, old_dict:dict, volumes: li
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_point
 
 def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config):
+    """ TODO """
     new_dict["snapControls"]["explicitFeatureSnap"] = True
     new_dict["snapControls"]["implicitFeatureSnap"] = False
     for instanace in volumes:
@@ -309,12 +332,14 @@ def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config
 
 
 def find_last_edge_mesh_refinement(old_dict:dict, file_path:str):
+    """ TODO """
     for entry in old_dict["castellatedMeshControls"]["features"]:
         if entry["file"] == file_path:
             return entry["level"]
     return None
 
 def set_edge_mesh_entry(new_dict:dict, old_dict:dict, file_path:str, config):
+    """ TODO """
     if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
         level = find_last_edge_mesh_refinement(old_dict, file_path)
         if level is None:
