@@ -281,10 +281,10 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
         for patch in instance.exterior_patches:
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
-        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}_refinement_region.stl\""}
+        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}_refinement_region.stl"'}
     if config["snappyHexMeshSetup"]["refinementRegions"]:
         for instance in volumes:
-            new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh","file":f"\"{instance.name}_refinement_region.stl\""}
+            new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}_refinement_region.stl"'}
     
  
 def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
