@@ -26,6 +26,8 @@ snappyHexMeshSetup
     defaultSurfaceRefinement (2 2);
     defaultEdgeRefinement 1;
     overwriteRefinements no;
+    refinementRegions yes;
+    defaultRegionRefinement ((1 1));
 }
 
 locationInMesh
