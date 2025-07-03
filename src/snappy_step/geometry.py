@@ -1,5 +1,9 @@
-import gmsh
+import logging
 import re
+
+import gmsh
+
+logger = logging.getLogger(__name__)
 
 class Volume:
     """ TODO """
@@ -40,7 +44,7 @@ class Volume:
         """ TODO """
         if "locationInMesh" in config and self.name in config["locationInMesh"]:
             self.inside_point =  config["locationInMesh"][self.name]
-            print(f"Using coordiantes in config file for {self.name}.")
+            logger.info(f"Using coordiantes in config file for {self.name}.")
         else:
             self.inside_point = get_location_in_mesh(self)
         
@@ -101,16 +105,16 @@ def get_location_in_mesh(entity: Volume):
     # First try center of mass
     coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tag))
     if gmsh.model.isInside(3, entity._tag,coordinates):
-        print("Found by center of mass")
-        print(coordinates)
+        logger.info("Found by center of mass")
+        logger.info(coordinates)
         return coordinates
     # try center of bounding box
     xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,entity._tag)
     coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
     if gmsh.model.isInside(3, entity._tag,coordinates):
-        print("Found by bounding box center")
-        print(coordinates)
+        logger.info("Found by bounding box center")
+        logger.info(coordinates)
         return coordinates
     # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
     z = (zmax+zmin)/2
@@ -118,15 +122,15 @@ def get_location_in_mesh(entity: Volume):
     for element in grids: # coarse grid to fine grid
         x = linspace(xmin, xmax, element)
         y = linspace(ymin, ymax, element)
-        print("Grid Search: "+str(element)+"x"+str(element))
+        logger.info("Grid Search: "+str(element)+"x"+str(element))
         for xi in x:
             for yi in y:
                 coordinates = [xi, yi, z]
                 if gmsh.model.isInside(3,entity._tag,coordinates):
-                    print("Found by grid search")
-                    print(coordinates)
+                    logger.info("Found by grid search")
+                    logger.info(coordinates)
                     return coordinates
-    print("Point not found.")
+    logger.error("Point not found.")
     exit(1)
 
 def validate_name(name: str):
@@ -158,7 +162,7 @@ def load_step_file(file_path, config):
     if "gmsh" in config:
         if "scaling" in config["gmsh"]:
             gmsh.option.setNumber("Geometry.OCCScaling",config["gmsh"]["scaling"])
-    print('Reading geometry')
+    logger.info('Reading geometry')
     gmsh.model.occ.importShapes(file_path,False)
     gmsh.model.occ.synchronize()
 
@@ -171,7 +175,7 @@ def imprint_geometry():
     remove_face_labels_on_volumes()
 
     # Apply coherence to remove duplicate surfaces, edges, and points
-    print('Imprinting features and removing duplicate faces')
+    logger.info('Imprinting features and removing duplicate faces')
     if number_volumes > 1:
         gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
         gmsh.model.occ.removeAllDuplicates()
@@ -182,7 +186,7 @@ def imprint_geometry():
     # Check coherence results
     volumes = gmsh.model.getEntities(3)
     if len(volumes) != number_volumes:
-        print("Coherence changed number of volumes. Check geometry. Exiting")
+        logger.info("Coherence changed number of volumes. Check geometry. Exiting")
         gmsh.finalize()
         exit(1)
 
@@ -195,7 +199,7 @@ def remove_face_labels_on_volumes():
             name = gmsh.model.getEntityName(face[0],face[1])
             if name is not None:
                 gmsh.model.removeEntityName(name)
-                print("removed "+ name)
+                logger.info("removed "+ name)
 
 def assign_cell_zones_to_interfaces(volumes:list[Volume]) -> Volume:
     """ TODO """
@@ -212,7 +216,7 @@ def assign_cell_zones_to_interfaces(volumes:list[Volume]) -> Volume:
                 
 def generate_surface_mesh(config: dict):
     """ TODO """
-    print("Generating Surface Mesh")
+    logger.info("Generating Surface Mesh")
     gmsh.option.setNumber("Mesh.Algorithm",config["gmsh"]["meshAlgorithm"])
     gmsh.option.setNumber("Mesh.MeshSizeFactor",config["gmsh"]["meshSizeFactor"])
     gmsh.option.setNumber("Mesh.MeshSizeMin",config["gmsh"]["meshSizeMin"])

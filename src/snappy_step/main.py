@@ -1,6 +1,9 @@
 import argparse
+import logging
 from .geometry import *
 from .read_write import *
+
+logger = logging.getLogger(__name__)
 
 def run_snappy_step(file_name,v,vf):
     """
@@ -34,7 +37,7 @@ def run_snappy_step(file_name,v,vf):
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
         gmsh.option.set_number("Geometry.LabelType",3)
-        print("gmsh window open. Close gmsh window to continue.")
+        logger.info("gmsh window open. Close gmsh window to continue.")
         gmsh.fltk.run()
         ans = ask_yes_no("Would you like to continue?")
         gmsh.fltk.finalize()
@@ -82,10 +85,10 @@ def run_snappy_step(file_name,v,vf):
         gmsh.option.set_number("Geometry.Surfaces",1)
         gmsh.option.set_number("Geometry.SurfaceLabels",1)
         gmsh.option.set_number("Geometry.LabelType",3)
-        print("gmsh window open. Close gmsh window to continue.")
+        logger.info("gmsh window open. Close gmsh window to continue.")
         gmsh.fltk.run()
         gmsh.fltk.finalize()
-    print("All geometry files and scripts generated. Done.")
+    logger.info("All geometry files and scripts generated. Done.")
     # Last GMSH command
     gmsh.finalize()
 
@@ -99,8 +102,36 @@ def main_func():
     parser.add_argument('-v', action='store_true',help='Display generated surface mesh after genration') # view generated mesh in gmsh
     parser.add_argument('-vf', action='store_true',help='Display faces and labels. User can choose to continue or stop after inspecting output') # view faces after coherence and don't generate mesh
     parser.add_argument('-file',help='Specify filename if not in constant/(geometry||triSurface) directory or multiple step files are present')
+    verbosity = parser.add_mutually_exclusive_group(required=False)
+    verbosity.add_argument('--quiet', action='store_true', help='Only log warnings and errors')
+    verbosity.add_argument('--verbose', action='store_true', help='Log more detailed information to the console')
 
     args = parser.parse_args()
+    # Get console logging level
+    if args.quiet:
+        console_level = logging.WARNING
+    elif args.verbose:
+        console_level = logging.DEBUG
+    else:
+        console_level = logging.INFO
+    print(f"Level: {console_level}")
+    
+    file_handler = logging.FileHandler('snappy_step.log')
+    file_handler.setLevel(logging.DEBUG)
+
+    # Set overall level for the application logger
+    logger.root.setLevel(logging.DEBUG)
+
+    logger.root.addHandler(file_handler)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(console_level)
+    logger.root.addHandler(console_handler)
+
+    # TODO REMOVE
+    logger.debug("TEST DEBUG")
+    logger.info("TEST INFO")
+    logger.warning("TEST WARN")
+
     run_snappy_step(args.file, args.v,args.vf)
 
 def snappy_step(file_name = None):
