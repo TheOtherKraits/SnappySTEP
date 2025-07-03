@@ -1,3 +1,4 @@
+import logging
 import os
 import math
 
@@ -6,6 +7,7 @@ from foamlib import FoamFile, FoamCase
 
 from .geometry import validate_name, Volume, Interface
 
+logger = logging.getLogger(__name__)
 
 def get_geometry_path(): 
     """ TODO """
@@ -15,7 +17,7 @@ def get_geometry_path():
         if not os.path.exists(geometry_path):
             geometry_path = None
     if geometry_path is None:
-        print("Please run from OpenFOAM case root directory.")
+        logger.info("Please run from OpenFOAM case root directory.")
         exit(1)
     return geometry_path
 
@@ -24,12 +26,12 @@ def read_config() -> dict:
     try:
         config = read_snappy_step_dict()
     except:
-        print("There seems to be a problem with snappyStepDict. Please check for format errors. Exiting.")
+        logger.exception("There seems to be a problem with snappyStepDict. Please check for format errors. Exiting.")
         exit(1)
 
     if "locationInMesh" in config:
         if config["locationInMesh"]:
-            print("Using locationInMesh coordinates defined in config")
+            logger.info("Using locationInMesh coordinates defined in config")
             new_locations = {}
             for old_key, value in config["locationInMesh"].items():
                 new_key = validate_name(old_key)
@@ -42,7 +44,7 @@ def read_config() -> dict:
     if "edgeMesh" in config["snappyHexMeshSetup"]:
         edge_mesh = config["snappyHexMeshSetup"]["edgeMesh"]
         if edge_mesh:
-            print("Edge mesh files will be generated")
+            logger.info("Edge mesh files will be generated")
     else:
         edge_mesh = False
     return config
@@ -64,19 +66,19 @@ def find_geometry_file(file_name: str, geometry_path: str) -> str:
                 files.append(file)
     
         if len(files) == 0:
-            print("No step file found in constant/(geometry||triSurface) directory. Exiting.")
+            logger.error("No step file found in constant/(geometry||triSurface) directory. Exiting.")
             exit(1)
         elif len(files) > 1:
-            print("More than one step file found. Please remove or rename other files, or specify the filepath to read with the -file arguemnt. Exiting.")
+            logger.error("More than one step file found. Please remove or rename other files, or specify the filepath to read with the -file arguemnt. Exiting.")
             exit(1)   
         else:
-            print(files[0]+" found")
+            logger.error(files[0]+" found")
             step_file = os.path.join(geometry_path, files[0])
     else:
         if os.path.isfile(file_name):
             step_file = file_name
         else:
-            print(file_name + " is not a file. Exiting.")
+            logger.error(file_name + " is not a file. Exiting.")
             exit(1)
     return step_file
 
@@ -91,9 +93,9 @@ def write_snappy_step_dict_template():
         try:
             os.remove(file_path)
         except PermissionError:
-            print(f"Error: Permission denied to delete '{file_path}'.")
+            logger.exception(f"Error: Permission denied to delete '{file_path}'.")
         except OSError as e:
-            print(f"Error: Could not delete '{file_path}'. Reason: {e}")
+            logger.exception(f"Error: Could not delete '{file_path}'. Reason: {e}")
     file["gmsh"] = {"meshSizeMax": 1000, "meshSizeMin": 0,"meshSizeFactor": 1,"meshSizeFromCurvature": 90,"meshAlgorithm": 6, "scaling": 1}
     file["snappyHexMeshSetup"] = {"edgeMesh": True, "refinementRegions": False,"multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "defaultRegionRefinement": [[1, 2]], "overwriteRefinements": False}
     file["locationInMesh"] = {}
@@ -209,7 +211,7 @@ def ask_yes_no(question):
         elif response in ["no", "n"]:
             return False
         else:
-            print("Invalid input. Please enter 'yes' or 'no' (y/n).")
+            logger.warning("Invalid input. Please enter 'yes' or 'no' (y/n).")
 
 def initialize_sHMD(config: dict):
     """ TODO """
