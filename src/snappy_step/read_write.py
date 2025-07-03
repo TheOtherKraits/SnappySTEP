@@ -352,12 +352,20 @@ def apply_previous_mesh_settings(new_dict: dict, old_dict: dict, config: dict) -
                 user_level = old_dict['castellatedMeshControls']['refinementSurfaces'].get(key,{}).get("level")
                 if user_level is not None:
                     new_dict['castellatedMeshControls']['refinementSurfaces'][key]["level"] = user_level
+            if 'patchInfo' in new_dict['castellatedMeshControls']['refinementSurfaces'][key]:
+                user_patch_info = old_dict['castellatedMeshControls']['refinementSurfaces'].get(key,{}).get('patchInfo')
+                if user_patch_info is not None:
+                    new_dict['castellatedMeshControls']['refinementSurfaces'][key]['patchInfo'] = user_patch_info
             if "regions" in new_dict['castellatedMeshControls']['refinementSurfaces'][key]:
                 for region_key in new_dict['castellatedMeshControls']['refinementSurfaces'][key]["regions"]:
                     if 'level' in new_dict['castellatedMeshControls']['refinementSurfaces'][key]["regions"][region_key]:
                         user_level = old_dict['castellatedMeshControls']['refinementSurfaces'].get(key,{}).get("regions",{}).get(region_key,{}).get('level')
                         if user_level is not None:
                             new_dict['castellatedMeshControls']['refinementSurfaces'][key]["regions"][region_key]["level"] = user_level
+                    if 'patchInfo' in new_dict['castellatedMeshControls']['refinementSurfaces'][key]['regions'][region_key]:
+                        user_patch_info = old_dict['castellatedMeshControls']['refinementSurfaces'].get(key,{}).get('regions',{}).get(region_key,{}).get('patchInfo')
+                        if user_patch_info is not None:
+                            new_dict['castellatedMeshControls']['refinementSurfaces'][key]['regions'][region_key]['patchInfo'] = user_patch_info
     # Refinement Regions
     if config['snappyHexMeshSetup'].get('refinementRegions', False):
         if "refinementRegions" in old_dict.get('castellatedMeshControls',{}):
