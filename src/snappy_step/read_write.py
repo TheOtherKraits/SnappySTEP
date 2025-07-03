@@ -290,24 +290,12 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
 def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
     """ TODO """
     # Exterior Surfaces
-    if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
-        try:
-            level = old_dict["castellatedMeshControls"]["refinementSurfaces"][step_name]["level"]
-        except:
-            level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
-    else:
-        level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
+    level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
     new_dict["castellatedMeshControls"]["refinementSurfaces"][step_name] = {"level": level, "patchInfo": {"type": "wall"},"regions": {}}
     sub_strings = ["default", "wall"]
     for instance in volumes:
         for patch in instance.exterior_patches:
-            if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
-                try:
-                    level = old_dict["castellatedMeshControls"]["refinementSurfaces"][step_name]["regions"][patch]["level"]
-                except:
-                    level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
-            else:
-                level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
+            level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
             if any(sub in patch for sub in sub_strings):
                 patch_type = "wall"
             else:
@@ -315,13 +303,7 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
             new_dict["castellatedMeshControls"]["refinementSurfaces"][step_name]["regions"][patch] = {"level": level, "patchInfo": {"type": patch_type}}
     # Interfaces
     for instance in interfaces:
-        if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
-            try:
-                level = old_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["level"]
-            except:
-                level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
-        else:
-            level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
+        level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
         new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name] = {"faceZone": instance.name, "level": level, "patchInfo": {"type": "wall"}}
         if instance.cell_zone_volume is not None:
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["cellZone"] = instance.cell_zone_volume.name
@@ -331,13 +313,7 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
 def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: list[Volume], config: dict):
     new_dict["castellatedMeshControls"]["refinementRegions"] = {}
     for instance in volumes:
-        if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
-            try:
-                level = old_dict["castellatedMeshControls"]["refinementRegions"][instance.name+"_refinement_region"]["level"]
-            except:
-                level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
-        else:
-            level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
+        level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
         new_dict["castellatedMeshControls"]["refinementRegions"][instance.name+"_refinement_region"] = {"mode": "inside", "levels": level}
 
 def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config):
@@ -347,25 +323,52 @@ def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config
     for instance in volumes:
         for patch in instance.exterior_patches:
             file_path = "\"edges/"+patch+"_edge.vtk\""
-            set_edge_mesh_entry(new_dict, old_dict, file_path, config)
+            set_edge_mesh_entry(new_dict, file_path, config)
     for instance in interfaces:
         file_path = "\"edges/"+instance.name+"_edge.vtk\""
-        set_edge_mesh_entry(new_dict, old_dict, file_path, config)
+        set_edge_mesh_entry(new_dict, file_path, config)
 
 
 def find_last_edge_mesh_refinement(old_dict:dict, file_path:str):
     """ TODO """
+    if old_dict is None or file_path is None:
+        return None
     for entry in old_dict["castellatedMeshControls"]["features"]:
-        if entry["file"] == file_path:
-            return entry["level"]
+        if entry.get('file') == file_path:
+            return entry.get('level')
     return None
 
-def set_edge_mesh_entry(new_dict:dict, old_dict:dict, file_path:str, config):
+def set_edge_mesh_entry(new_dict:dict, file_path:str, config):
     """ TODO """
-    if old_dict is not None and not config["snappyHexMeshSetup"]["overwriteRefinements"]:
-        level = find_last_edge_mesh_refinement(old_dict, file_path)
-        if level is None:
-            level = config["snappyHexMeshSetup"]["defaultEdgeRefinement"]
-    else:
-        level = config["snappyHexMeshSetup"]["defaultEdgeRefinement"]
+    level = config["snappyHexMeshSetup"]["defaultEdgeRefinement"]
     new_dict["castellatedMeshControls"]["features"].append({"file": file_path, "level": level})
+
+def apply_previous_mesh_settings(new_dict: dict, old_dict: dict, config: dict) -> None:
+    """ TODO """
+    # Refinement Surfaces
+    if 'refinementSurfaces' in old_dict.get('castellatedMeshControls',{}):
+        for key in new_dict['castellatedMeshControls']['refinementSurfaces']:
+            if 'level' in new_dict['castellatedMeshControls']['refinementSurfaces'][key]:
+                user_level = old_dict['castellatedMeshControls']['refinementSurfaces'].get(key,{}).get("level")
+                if user_level is not None:
+                    new_dict['castellatedMeshControls']['refinementSurfaces'][key]["level"] = user_level
+            if "regions" in new_dict['castellatedMeshControls']['refinementSurfaces'][key]:
+                for region_key in new_dict['castellatedMeshControls']['refinementSurfaces'][key]["regions"]:
+                    if 'level' in new_dict['castellatedMeshControls']['refinementSurfaces'][key]["regions"][region_key]:
+                        user_level = old_dict['castellatedMeshControls']['refinementSurfaces'].get(key,{}).get("regions",{}).get(region_key,{}).get('level')
+                        if user_level is not None:
+                            new_dict['castellatedMeshControls']['refinementSurfaces'][key]["regions"][region_key]["level"] = user_level
+    # Refinement Regions
+    if config['snappyHexMeshSetup'].get('refinementRegions', False):
+        if "refinementRegions" in old_dict.get('castellatedMeshControls',{}):
+            for key in new_dict["castellatedMeshControls"]["refinementRegions"]:
+                user_level = old_dict["castellatedMeshControls"]['refinementRegions'].get(key,{}).get('levels')
+                if user_level is not None:
+                    new_dict["castellatedMeshControls"]["refinementRegions"][key]['levels'] = user_level
+    # Feature Edges
+    if config['snappyHexMeshSetup'].get('edgeMesh', False):
+        if "features" in old_dict.get('castellatedMeshControls',{}):
+            for entry in new_dict['castellatedMeshControls']['features']:
+                user_level = find_last_edge_mesh_refinement(old_dict, entry.get('file'))
+                if user_level is not None:
+                    entry['level'] = user_level

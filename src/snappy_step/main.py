@@ -60,12 +60,13 @@ def run_snappy_step(file_name,v,vf):
     configure_sHMD_geometry(new_dict, volumes, interfaces, step_name, config)
     configure_sHMD_refinement_surfaces(new_dict, old_dict, volumes, interfaces, step_name, config)
     new_dict['castellatedMeshControls']['insidePoint'] = default_volume.inside_point
-    # Edge mesh part here
     if config['snappyHexMeshSetup']["edgeMesh"]:
         configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config)
     if config["snappyHexMeshSetup"]["refinementRegions"]:
         configure_sHMD_refinement_regions(new_dict, old_dict, volumes, config)
     # Future layers
+    if not config['snappyHexMeshSetup'].get('overwriteRefinements', False):
+        apply_previous_mesh_settings(new_dict, old_dict, config)
     write_sHMD(new_dict)
 
     # Write mesh split command
