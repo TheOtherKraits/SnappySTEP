@@ -98,6 +98,30 @@ def write_snappy_step_dict_template():
     file["snappyHexMeshSetup"] = {"edgeMesh": True, "refinementRegions": False,"multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "defaultRegionRefinement": [[1, 2]], "overwriteRefinements": False}
     file["locationInMesh"] = {}
 
+def validate_snappy_step_dict(config:dict) -> None:
+    """
+    Validates that all required entries are present in the snappyStepDict file.
+    """
+    entries = []
+
+    requiredEntries = {
+        'gmsh': ['meshSizeMax', 'meshSizeMin', 'meshSizeFactor', 'meshSizeFromCurvature', 'meshAlgorithm', 'scaling'],
+        'snappyHexMeshSetup': ['backgroundMeshSize', 'defaultSurfaceRefinement']
+    }
+    entries.extend(list(set(requiredEntries['gmsh']) - set(config.get('gmsh',{}).keys())))
+    entries.extend(list(set(requiredEntries['snappyHexMeshSetup']) - set(config.get('snappyHexMeshSetup',{}).keys())))
+    if config.get('snappyHexMeshSetup',{}).get('edgeMesh', False):
+        if not config['snappyHexMeshSetup'].get('defaultEdgeRefinement', False):
+            entries.append('defaultEdgeRefinement')
+    if config.get('snappyHexMeshSetup',{}).get('refinementRegions', False):
+        if not config['snappyHexMeshSetup'].get('defaultRegionRefinement', False):
+            entries.append('defaultRegionRefinement')
+    if entries:
+        print("The following required entry or entries are missing from snappyStepDict:")
+        print(*entries)
+        print('Exiting.')
+        exit(1) 
+
 def write_block_mesh_dict(bouding_box: list, dx:list[float]):
     """ TODO """
     x_len = bouding_box[3]-bouding_box[0]
@@ -282,7 +306,7 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
         new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
-    if config["snappyHexMeshSetup"]["refinementRegions"]:
+    if config["snappyHexMeshSetup"].get("refinementRegions", False):
         for instance in volumes:
             new_dict["geometry"][instance.name+'_refinement_region'] = {"type":"triSurfaceMesh",'file':f'"{instance.name}_refinement_region.stl"'}
     
