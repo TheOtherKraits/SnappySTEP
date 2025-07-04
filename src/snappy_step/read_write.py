@@ -150,13 +150,13 @@ def write_block_mesh_dict(bouding_box: list, dx:list[float]):
 
 def retrive_old_dict_user_entries(old_dict, new_dict):
     """ TODO """
-    for key, value in old_dict:
-        if key in [ "geometry", "refinementSurfaces", "refinementRegions"]:
+    for key, value in old_dict.items():
+        if key in [ "geometry", "refinementSurfaces", "refinementRegions", "addLayersControls"]:
             # Skip these keys - values should not be copied to new dict
             continue
         elif isinstance(value, dict) and key in new_dict:
             retrive_old_dict_user_entries(old_dict[key], new_dict[key])
-        elif key not in new_dict and (isinstance(value, str) or isinstance(value, int) or isinstance(value, float)):
+        elif key not in new_dict:
             new_dict[key] = value
         else:
             continue
@@ -380,3 +380,7 @@ def apply_previous_mesh_settings(new_dict: dict, old_dict: dict, config: dict) -
                 user_level = find_last_edge_mesh_refinement(old_dict, entry.get('file'))
                 if user_level is not None:
                     entry['level'] = user_level
+    # Layers here
+    
+    # Other entries
+    retrive_old_dict_user_entries(old_dict, new_dict)
