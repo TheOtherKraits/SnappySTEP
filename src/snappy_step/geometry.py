@@ -116,31 +116,47 @@ def get_location_in_mesh(entity: Volume):
     # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
     orders = [0, 1, 2]
     for order in orders: # coarse grid to fine grid
-        points = generate_search_grid(entity, order)
+        points, spacing = generate_search_grid(entity, order)
         print(f'Grid search order {order+1}')
         for xi in points[0]:
             for yi in points[1]:
                 for zi in points[2]:
                     coordinates = [xi, yi, zi]
                     if check_coordinate(entity, coordinates):
+                        coordinates = local_grid_search(entity, coordinates, spacing)
                         print("Found by grid search")
                         print(coordinates)
                         return coordinates
     print("Point not found.")
     exit(1)
 
-def check_coordinate(entity: Volume, coordinates: list[float]) -> bool:
+def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
     if gmsh.model.isInside(3,entity._tag,coordinates):
+        distances = []
         for face in entity.exterior_tags + entity.interface_tags:
             closest_point = gmsh.model.getClosestPoint(2,face,coordinates)[0]
-            if math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2) < 1e-6:
+            distances.append(math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2))
+            if distances[-1] < 1e-6:
                 return False
-            print(math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2))
-            print(f'closest point: {closest_point}')
-        return True
+        return min(distances)
     else:
         return False
-    
+
+def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -> list[float]:
+    print('Local Grid Search')
+    x = linspace(coordinates[0] - spacing, coordinates[0]+ spacing, 21)
+    y = linspace(coordinates[1] - spacing, coordinates[1]+ spacing, 21)
+    z = linspace(coordinates[2] - spacing, coordinates[2]+ spacing, 21)
+    max_distance = 0
+    for xi in x:
+        for yi in y:
+            for zi in z:
+                distance = check_coordinate(entity, [xi, yi, zi])
+                if distance > max_distance:
+                    max_distance = distance
+                    new_coordinates = [xi, yi, zi]
+    return new_coordinates
+
 def validate_name(name: str):
     """ TODO """
     if name.startswith("."):
@@ -168,7 +184,7 @@ def generate_search_grid(entity: Volume, order: int):
         while new_points[-1] > mins[dim]:
             points[dim].extend(new_points)
             new_points = [points[dim][-2] + spacing, points[dim][-1] - spacing]
-    return points
+    return points, spacing
 
 def validate_gmsh_names():
     """ TODO """
