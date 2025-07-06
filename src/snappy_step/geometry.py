@@ -1,5 +1,6 @@
 import gmsh
 import re
+import math
 
 class Volume:
     """ TODO """
@@ -100,7 +101,7 @@ def get_location_in_mesh(entity: Volume):
     coordinates = []
     # First try center of mass
     coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tag))
-    if gmsh.model.isInside(3, entity._tag,coordinates):
+    if check_coordinate(entity, coordinates):
         print("Found by center of mass")
         print(coordinates)
         return coordinates
@@ -108,27 +109,38 @@ def get_location_in_mesh(entity: Volume):
     xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,entity._tag)
     coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
-    if gmsh.model.isInside(3, entity._tag,coordinates):
+    if check_coordinate(entity, coordinates):
         print("Found by bounding box center")
         print(coordinates)
         return coordinates
     # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
-    z = (zmax+zmin)/2
-    grids = [10, 100, 1000]
-    for element in grids: # coarse grid to fine grid
-        x = linspace(xmin, xmax, element)
-        y = linspace(ymin, ymax, element)
-        print("Grid Search: "+str(element)+"x"+str(element))
-        for xi in x:
-            for yi in y:
-                coordinates = [xi, yi, z]
-                if gmsh.model.isInside(3,entity._tag,coordinates):
-                    print("Found by grid search")
-                    print(coordinates)
-                    return coordinates
+    orders = [0, 1, 2]
+    for order in orders: # coarse grid to fine grid
+        points = generate_search_grid(entity, order)
+        print(f'Grid search order {order+1}')
+        for xi in points[0]:
+            for yi in points[1]:
+                for zi in points[2]:
+                    coordinates = [xi, yi, zi]
+                    if check_coordinate(entity, coordinates):
+                        print("Found by grid search")
+                        print(coordinates)
+                        return coordinates
     print("Point not found.")
     exit(1)
 
+def check_coordinate(entity: Volume, coordinates: list[float]) -> bool:
+    if gmsh.model.isInside(3,entity._tag,coordinates):
+        for face in entity.exterior_tags + entity.interface_tags:
+            closest_point = gmsh.model.getClosestPoint(2,face,coordinates)[0]
+            if math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2) < 1e-6:
+                return False
+            print(math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2))
+            print(f'closest point: {closest_point}')
+        return True
+    else:
+        return False
+    
 def validate_name(name: str):
     """ TODO """
     if name.startswith("."):
@@ -141,6 +153,22 @@ def linspace(a, b, n):
     """ TODO """
     diff = (float(b) - a)/(n - 1)
     return [diff * i + a  for i in range(1, n-1)] # Skips first and last
+
+def generate_search_grid(entity: Volume, order: int):
+    """ TODO """
+    x_min, y_min, z_min, x_max, y_max, z_max = gmsh.model.getBoundingBox(3,entity._tag)
+    n_divisons = [9, 99, 999]
+    mins = [x_min, y_min, z_min]
+    deltas = [x_max - x_min, y_max - y_min, z_max - z_min]
+    spacing = min(deltas)/n_divisons[order]
+    points = [[],[],[]]
+    for dim in [0, 1, 2]:
+        points[dim] = [deltas[dim]/2 + mins[dim], deltas[dim]/2 + mins[dim] + spacing, deltas[dim]/2 + mins[dim] - spacing]
+        new_points = [points[dim][-2] + spacing, points[dim][-1] - spacing]
+        while new_points[-1] > mins[dim]:
+            points[dim].extend(new_points)
+            new_points = [points[dim][-2] + spacing, points[dim][-1] - spacing]
+    return points
 
 def validate_gmsh_names():
     """ TODO """
