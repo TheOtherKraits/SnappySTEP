@@ -23,9 +23,6 @@ def run_snappy_step(file_name,v,vf):
     load_step_file(step_file, config)
     imprint_geometry()
     validate_gmsh_names()
-    volumes, interfaces = process_geometry(config)
-    default_volume = assign_cell_zones_to_interfaces(volumes)
-    model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
 
     # optionally view faces and volumes and exit before mesh
     if vf:
@@ -40,6 +37,12 @@ def run_snappy_step(file_name,v,vf):
         if not ans:
             gmsh.finalize()
             exit(1)
+
+    volumes, interfaces = process_geometry(config)
+    default_volume = assign_cell_zones_to_interfaces(volumes)
+    model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
+
+
 
     # Generate Mesh
     generate_surface_mesh(config)
