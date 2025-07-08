@@ -143,11 +143,12 @@ def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
         return False
 
 def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -> list[float]:
-    print('Local Grid Search')
-    x = linspace(coordinates[0] - spacing, coordinates[0]+ spacing, 21)
-    y = linspace(coordinates[1] - spacing, coordinates[1]+ spacing, 21)
-    z = linspace(coordinates[2] - spacing, coordinates[2]+ spacing, 21)
+    print('Intial coordinate found. Looking for optimized point.')
+    x = linspace(coordinates[0] - spacing, coordinates[0]+ spacing, 11)
+    y = linspace(coordinates[1] - spacing, coordinates[1]+ spacing, 11)
+    z = linspace(coordinates[2] - spacing, coordinates[2]+ spacing, 11)
     max_distance = 0
+    percent = 0
     for xi in x:
         for yi in y:
             for zi in z:
@@ -155,6 +156,9 @@ def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -
                 if distance > max_distance:
                     max_distance = distance
                     new_coordinates = [xi, yi, zi]
+        percent = percent+10
+        print(f'{percent}%')
+    print ("done.")
     return new_coordinates
 
 def validate_name(name: str):
