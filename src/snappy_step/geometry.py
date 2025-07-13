@@ -145,35 +145,29 @@ def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
 
 def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -> list[float]:
     print('Intial coordinate found. Looking for optimized point.')
+    max_iterations = 10
     new_spacing = spacing/20.0
     coordinates = np.array(coordinates)
-    x_gradient = (check_coordinate(entity, [coordinates[0] + new_spacing, coordinates[1], coordinates[2]])
-                - check_coordinate(entity, [coordinates[0] - new_spacing, coordinates[1], coordinates[2]])
-                  )/(2*new_spacing)
-    y_gradient = (check_coordinate(entity, [coordinates[0], coordinates[1] + new_spacing, coordinates[2]])
-                - check_coordinate(entity, [coordinates[0], coordinates[1] - new_spacing, coordinates[2]])
-                  )/(2*new_spacing)
-    z_gradient = (check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] + new_spacing])
-                - check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] - new_spacing])
-                 )/(2*new_spacing)
-    magnitude = math.sqrt(x_gradient**2 + y_gradient**2 + z_gradient**2)
+    current_point = check_coordinate(entity,coordinates)
+    for iteration in np.linspace(0,10):
+        gradient = np.zeros(3)
+        gradient[0] = (check_coordinate(entity, [coordinates[0] + new_spacing, coordinates[1], coordinates[2]])
+                    - current_point)/(new_spacing)
+        gradient[1] = (check_coordinate(entity, [coordinates[0], coordinates[1] + new_spacing, coordinates[2]])
+                    - current_point)/(new_spacing)
+        gradient[2] = (check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] + new_spacing])
+                    - current_point)/(new_spacing)
+        magnitude = np.linalg.norm(gradient)
+        move_vector = np.divide(gradient,magnitude)
+        new_coordinates = np.add(coordinates, move_vector*new_spacing)
+        new_point = check_coordinate(entity,new_coordinates)
+        if new_point < current_point:
+            return coordinates
+        else:
+            current_point = new_point
+            coordinates = new_coordinates.copy()
 
-    x = linspace(coordinates[0] - spacing, coordinates[0]+ spacing, 11)
-    y = linspace(coordinates[1] - spacing, coordinates[1]+ spacing, 11)
-    z = linspace(coordinates[2] - spacing, coordinates[2]+ spacing, 11)
-    max_distance = 0
-    percent = 0
-    for xi in x:
-        for yi in y:
-            for zi in z:
-                distance = check_coordinate(entity, [xi, yi, zi])
-                if distance > max_distance:
-                    max_distance = distance
-                    new_coordinates = [xi, yi, zi]
-        percent = percent+10
-        print(f'{percent}%')
-    print ("done.")
-    return new_coordinates
+    return coordinates
 
 def validate_name(name: str):
     """ TODO """
