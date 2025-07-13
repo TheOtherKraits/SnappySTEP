@@ -149,7 +149,7 @@ def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -
     new_spacing = spacing/20.0
     coordinates = np.array(coordinates)
     current_point = check_coordinate(entity,coordinates)
-    for iteration in np.linspace(0,10):
+    for iteration in np.linspace(0,max_iterations):
         gradient = np.zeros(3)
         gradient[0] = (check_coordinate(entity, [coordinates[0] + new_spacing, coordinates[1], coordinates[2]])
                     - current_point)/(new_spacing)
