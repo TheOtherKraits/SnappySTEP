@@ -13,6 +13,7 @@ def run_snappy_step(file_name,v,vf):
 
     # Read Config
     config = read_config()
+    validate_snappy_step_dict(config)
     
     # Find geometry files
     step_file = find_geometry_file(file_name, geometry_path)
@@ -49,14 +50,14 @@ def run_snappy_step(file_name,v,vf):
 
     # Write Mesh
     write_surface_meshes(volumes, interfaces, step_name, geometry_path)
-    if config["snappyHexMeshSetup"]["edgeMesh"]:
+    if config["snappyHexMeshSetup"].get("edgeMesh", False):
         write_edge_meshes(volumes, interfaces, geometry_path)
-    if config["snappyHexMeshSetup"]["refinementRegions"]:
+    if config["snappyHexMeshSetup"].get("refinementRegions", False):
         write_refinement_regions_meshes(volumes, geometry_path)
 
     # Write Dictionaries
     old_dict, new_dict = initialize_sHMD(config)
-    if config["snappyHexMeshSetup"]["generateBlockMeshDict"]:
+    if config["snappyHexMeshSetup"].get("generateBlockMeshDict", True):
         write_block_mesh_dict(model_bounding_box,config["snappyHexMeshSetup"]["backgroundMeshSize"])
     if not os.path.isfile("./system/meshQualityDict"): # Write base meshMeshQualityDict if one does not exits
         write_mesh_quality_dict()
@@ -64,11 +65,15 @@ def run_snappy_step(file_name,v,vf):
     configure_sHMD_refinement_surfaces(new_dict, old_dict, volumes, interfaces, step_name, config)
     new_dict['castellatedMeshControls']['insidePoint'] = default_volume.inside_point
     # Edge mesh part here
-    if config['snappyHexMeshSetup']["edgeMesh"]:
+    if config["snappyHexMeshSetup"].get("edgeMesh", False):
         configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config)
-    if config["snappyHexMeshSetup"]["refinementRegions"]:
+    if config["snappyHexMeshSetup"].get("refinementRegions", False):
         configure_sHMD_refinement_regions(new_dict, old_dict, volumes, config)
-    # Future layers
+    # Future layers here
+
+    # Apply settings from previous sHMD
+    if not config['snappyHexMeshSetup'].get('overwriteRefinements', False) and old_dict is not None:
+        apply_previous_mesh_settings(new_dict, old_dict, config)
     write_sHMD(new_dict)
 
     # Write mesh split command
