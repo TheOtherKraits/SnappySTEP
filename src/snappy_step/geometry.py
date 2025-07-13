@@ -1,6 +1,7 @@
 import gmsh
 import re
 import math
+import numpy as np
 
 class Volume:
     """ TODO """
@@ -144,6 +145,19 @@ def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
 
 def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -> list[float]:
     print('Intial coordinate found. Looking for optimized point.')
+    new_spacing = spacing/20.0
+    coordinates = np.array(coordinates)
+    x_gradient = (check_coordinate(entity, [coordinates[0] + new_spacing, coordinates[1], coordinates[2]])
+                - check_coordinate(entity, [coordinates[0] - new_spacing, coordinates[1], coordinates[2]])
+                  )/(2*new_spacing)
+    y_gradient = (check_coordinate(entity, [coordinates[0], coordinates[1] + new_spacing, coordinates[2]])
+                - check_coordinate(entity, [coordinates[0], coordinates[1] - new_spacing, coordinates[2]])
+                  )/(2*new_spacing)
+    z_gradient = (check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] + new_spacing])
+                - check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] - new_spacing])
+                 )/(2*new_spacing)
+    magnitude = math.sqrt(x_gradient**2 + y_gradient**2 + z_gradient**2)
+
     x = linspace(coordinates[0] - spacing, coordinates[0]+ spacing, 11)
     y = linspace(coordinates[1] - spacing, coordinates[1]+ spacing, 11)
     z = linspace(coordinates[2] - spacing, coordinates[2]+ spacing, 11)
