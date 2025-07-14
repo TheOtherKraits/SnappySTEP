@@ -3,15 +3,18 @@ import re
 
 class Volume:
     """ TODO """
-    def __init__(self, tag: int):
-        self._tag: int = tag
+    def __init__(self, tags: list[int]):
+        self._tags: list[int] = tags
         self.exterior_tags: list[int] = []
         self.interface_tags: list[int] = []
         self.exterior_patches: dict = {}
         self.exterior_patch_edges: dict = {}
         self.interface_patches: list[int] = []
-        self.name = gmsh.model.getEntityName(3,tag)
-        self.face_dim_tags: list[tuple[int,int]] = gmsh.model.getBoundary([(3,tag)], False, False, False)
+        self.baffle_patches: list[int] = []
+        self.name = gmsh.model.getEntityName(3,tags[0])
+        self.face_dim_tags: list[tuple[int,int]] = []
+        for tag in tags:
+            self.face_dim_tags.extend(gmsh.model.getBoundary([(3,tag)], False, False, False))
         self.inside_point: list[float] = []
         for dim_tag in self.face_dim_tags:
             if len(gmsh.model.getAdjacencies(2,dim_tag[1])[0]) == 1:
@@ -52,7 +55,14 @@ class Interface:
         self.name: str = name
         self.edge_tags: set[int] = edge_tags
         self.cell_zone_volume: Volume|None = None
-        
+    
+class Baffle:
+    """ TODO """
+    def __init__(self, volume: Volume, name: str, face_tags: list[int], edge_tags: set[int]):
+        self.volume: Volume = volume
+        self.face_tags: list[int] = face_tags
+        self.name: str = name
+        self.edge_tags: set[int] = edge_tags
 
 def process_geometry(config: dict):
     """ TODO """
@@ -175,16 +185,25 @@ def imprint_geometry():
     if number_volumes > 1:
         gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
         gmsh.model.occ.removeAllDuplicates()
-    gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
+        # Check coherence results
+        if len(gmsh.model.getEntities(3)) != number_volumes:
+            print("Coherence changed number of volumes. Check geometry. Exiting")
+            gmsh.finalize()
+            exit(1)
+    outDims, outMap = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
-
-    # Check coherence results
-    volumes = gmsh.model.getEntities(3)
-    if len(volumes) != number_volumes:
-        print("Coherence changed number of volumes. Check geometry. Exiting")
-        gmsh.finalize()
-        exit(1)
+    if len(gmsh.model.getEntities(3)) != number_volumes:
+        print("Baffle(s) split volume(s)") # remove print statemnt later
+        for group in outMap:
+            if len(group)>1:
+                for entity in group:
+                    if entity == group[0]:
+                        group_name = gmsh.model.getEntityName(entity[0], entity[1])
+                        if group_name == '':
+                            break
+                    else:
+                        gmsh.model.set_entity_name(entity[0], entity[1],group_name)
 
 def remove_face_labels_on_volumes():
     """ TODO """
