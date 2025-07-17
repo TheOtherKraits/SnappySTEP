@@ -9,8 +9,8 @@ FILE_DESCRIPTION(
 /* implementation_level */ '2;1');
 
 FILE_NAME(
-/* name */ 'BaffleFullSplit.step',
-/* time_stamp */ '2025-07-13T14:14:09-05:00',
+/* name */ 'BafflePartialSplitExtended.step',
+/* time_stamp */ '2025-07-15T21:14:04-05:00',
 /* author */ (''),
 /* organization */ (''),
 /* preprocessor_version */ 'ST-DEVELOPER v20.1',
@@ -90,10 +90,10 @@ SHAPE_REPRESENTATION_RELATIONSHIP()
 #65=VECTOR('',#197,10.);
 #66=VECTOR('',#200,10.);
 #67=VECTOR('',#201,10.);
-#68=VECTOR('',#210,10.);
-#69=VECTOR('',#211,10.);
-#70=VECTOR('',#212,10.);
-#71=VECTOR('',#213,10.);
+#68=VECTOR('',#210,7.5);
+#69=VECTOR('',#211,7.5);
+#70=VECTOR('',#212,7.5);
+#71=VECTOR('',#213,7.5);
 #72=VERTEX_POINT('',#221);
 #73=VERTEX_POINT('',#222);
 #74=VERTEX_POINT('',#224);
@@ -275,17 +275,17 @@ POSITIVE_RATIO_MEASURE(7850.),#149);
 #244=CARTESIAN_POINT('Origin',(25.,25.,15.));
 #245=CARTESIAN_POINT('Origin',(25.,25.,0.));
 #246=CARTESIAN_POINT('',(0.,0.,0.));
-#247=CARTESIAN_POINT('Origin',(25.,25.,7.5));
+#247=CARTESIAN_POINT('Origin',(18.75,31.25,7.5));
 #248=CARTESIAN_POINT('',(0.,50.,7.5));
-#249=CARTESIAN_POINT('',(0.,0.,7.5));
+#249=CARTESIAN_POINT('',(0.,12.5,7.5));
 #250=CARTESIAN_POINT('',(0.,50.,7.5));
-#251=CARTESIAN_POINT('',(50.,0.,7.5));
-#252=CARTESIAN_POINT('',(0.,0.,7.5));
-#253=CARTESIAN_POINT('',(50.,50.,7.5));
-#254=CARTESIAN_POINT('',(50.,0.,7.5));
-#255=CARTESIAN_POINT('',(50.,50.,7.5));
+#251=CARTESIAN_POINT('',(37.5,12.5,7.5));
+#252=CARTESIAN_POINT('',(0.,12.5,7.5));
+#253=CARTESIAN_POINT('',(37.5,50.,7.5));
+#254=CARTESIAN_POINT('',(37.5,12.5,7.5));
+#255=CARTESIAN_POINT('',(37.5,50.,7.5));
 #256=CARTESIAN_POINT('',(0.,0.,0.));
-#257=CARTESIAN_POINT('',(0.,0.,0.));
+#257=CARTESIAN_POINT('',(-6.,9.,0.));
 #258=UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.01),#266,
 'DISTANCE_ACCURACY_VALUE',
 'Maximum model space distance between geometric entities at asserted c
@@ -358,14 +358,15 @@ SOLID_ANGLE_UNIT()
 #279=SHAPE_REPRESENTATION('',(#167),#263);
 #280=SHAPE_REPRESENTATION('',(#174,#20),#264);
 #281=PRODUCT_DEFINITION_CONTEXT('part definition',#292,'design');
-#282=PRODUCT_DEFINITION('BaffleFullSplit','BaffleFullSplit v3',#285,#281);
+#282=PRODUCT_DEFINITION('BafflePartialSplitExtended',
+'BafflePartialSplitExtended v2',#285,#281);
 #283=PRODUCT_DEFINITION('main_body','main_body',#286,#281);
 #284=PRODUCT_DEFINITION('baffle_body','baffle_body',#287,#281);
 #285=PRODUCT_DEFINITION_FORMATION('',$,#294);
 #286=PRODUCT_DEFINITION_FORMATION('',$,#295);
 #287=PRODUCT_DEFINITION_FORMATION('',$,#296);
-#288=PRODUCT_RELATED_PRODUCT_CATEGORY('BaffleFullSplit v3',
-'BaffleFullSplit v3',(#294));
+#288=PRODUCT_RELATED_PRODUCT_CATEGORY('BafflePartialSplitExtended v2',
+'BafflePartialSplitExtended v2',(#294));
 #289=PRODUCT_RELATED_PRODUCT_CATEGORY('main_body','main_body',(#295));
 #290=PRODUCT_RELATED_PRODUCT_CATEGORY('baffle_body','baffle_body',(#296));
 #291=APPLICATION_PROTOCOL_DEFINITION('international standard',
@@ -373,7 +374,8 @@ SOLID_ANGLE_UNIT()
 #292=APPLICATION_CONTEXT(
 'Core Data for Automotive Mechanical Design Process');
 #293=PRODUCT_CONTEXT('part definition',#292,'mechanical');
-#294=PRODUCT('BaffleFullSplit','BaffleFullSplit v3',$,(#293));
+#294=PRODUCT('BafflePartialSplitExtended',
+'BafflePartialSplitExtended v2',$,(#293));
 #295=PRODUCT('main_body','main_body',$,(#293));
 #296=PRODUCT('baffle_body','baffle_body',$,(#293));
 #297=PRESENTATION_STYLE_ASSIGNMENT((#298));
