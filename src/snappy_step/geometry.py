@@ -190,12 +190,18 @@ def imprint_geometry():
             print("Coherence changed number of volumes. Check geometry. Exiting")
             gmsh.finalize()
             exit(1)
-    outDims, outMap = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
+    out_dims, out_map = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(2),gmsh.model.occ.getEntities(2))
+    rename_out_map_entities(out_map)
+    out_dims, out_map = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
     if len(gmsh.model.getEntities(3)) != number_volumes:
         print("Baffle(s) split volume(s)") # remove print statemnt later
-        for group in outMap:
+        rename_out_map_entities(out_map)
+
+def rename_out_map_entities(out_map: list[list[tuple]]):
+    """TODO"""
+    for group in out_map:
             if len(group)>1:
                 for entity in group:
                     if entity == group[0]:
