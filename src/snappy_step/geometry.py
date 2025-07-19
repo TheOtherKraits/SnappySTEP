@@ -58,19 +58,49 @@ class Interface:
     
 class Baffle:
     """ TODO """
-    def __init__(self, volume: Volume, name: str, face_tags: list[int], edge_tags: set[int]):
-        self.volume: Volume = volume
+    face_tags = []
+    def __init__(self, name: str, face_tags: list[int], edge_tags: set[int]):
         self.face_tags: list[int] = face_tags
         self.name: str = name
         self.edge_tags: set[int] = edge_tags
+        Baffle.face_tags.extend(face_tags)
+
+def get_baffles() -> list[Baffle]:
+    baffles: list[Baffle]= []
+    baffle_groups = {}
+    face_dim_tags = gmsh.model.getEntities(2)
+    for dim_tag in face_dim_tags:
+        if not gmsh.model.getEntityName(dim_tag[0], dim_tag[1]):
+            continue
+        upward_adjacencies = gmsh.model.getAdjacencies(dim_tag[0], dim_tag[1])[0]
+        if upward_adjacencies.size == 0:
+            set_tag_name_group(baffle_groups, dim_tag)
+        elif len({gmsh.model.getEntityName(3, item) for item in upward_adjacencies}) == 1: # All adjacent volumes have same name
+            set_tag_name_group(baffle_groups, dim_tag)
+        else:
+            continue
+    for group in baffle_groups:
+        edges = set()
+        for face in baffle_groups[group]:
+            edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
+        baffles.append(Baffle(group, baffle_groups[group],edges))
+    return baffles
+
+def get_volumes() -> list[Volume]:
+    volume_groups = {}
+    volume_dim_tags = gmsh.model.getEntities(3)
+    volumes = []
+    for dim_tag in volume_dim_tags:
+        set_tag_name_group(volume_groups, dim_tag)
+    for group in volume_groups:
+        volumes.append(Volume(volume_groups[group]))
+    return volumes
 
 def process_geometry(config: dict):
     """ TODO """
-    volumes: list[Volume] = []
+    volumes: list[Volume] = get_volumes()
     interfaces: list[Interface] = []
-    volume_dim_tags = gmsh.model.getEntities(3)
-    for dim_tag in volume_dim_tags:
-        volumes.append(Volume(dim_tag[1]))
+    baffles: list[Baffle]= get_baffles()
     for element in volumes:
         element.get_inside_point(config)
     for index_a, volume_a in enumerate(volumes):
@@ -102,23 +132,31 @@ def process_geometry(config: dict):
                     interfaces.append(Interface(volume_a,volume_b,interface_name,groups[interface_name],edges))
                     volume_a.interface_patches.append(interfaces[-1])
                     volume_b.interface_patches.append(interfaces[-1])
-    return volumes, interfaces
+    return volumes, interfaces, baffles
 
+
+def set_tag_name_group(groups: dict, dim_tag):
+    """ TODO """
+    baffle_name = gmsh.model.getEntityName(dim_tag[0], dim_tag[1])
+    if baffle_name in groups.keys():
+        groups[baffle_name].append(dim_tag[1])
+    else:
+        groups[baffle_name] = [dim_tag[1]]
 
 def get_location_in_mesh(entity: Volume):
     """ TODO """
     coordinates = []
     # First try center of mass
-    coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tag))
-    if gmsh.model.isInside(3, entity._tag,coordinates):
+    coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tags[0]))
+    if gmsh.model.isInside(3, entity._tags[0],coordinates):
         print("Found by center of mass")
         print(coordinates)
         return coordinates
     # try center of bounding box
-    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,entity._tag)
+    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,entity._tags[0])
     coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
-    if gmsh.model.isInside(3, entity._tag,coordinates):
+    if gmsh.model.isInside(3, entity._tags[0],coordinates):
         print("Found by bounding box center")
         print(coordinates)
         return coordinates
@@ -132,7 +170,7 @@ def get_location_in_mesh(entity: Volume):
         for xi in x:
             for yi in y:
                 coordinates = [xi, yi, z]
-                if gmsh.model.isInside(3,entity._tag,coordinates):
+                if gmsh.model.isInside(3,entity._tags[0],coordinates):
                     print("Found by grid search")
                     print(coordinates)
                     return coordinates

@@ -24,7 +24,7 @@ def run_snappy_step(file_name,v,vf):
     load_step_file(step_file, config)
     imprint_geometry()
     validate_gmsh_names()
-    volumes, interfaces = process_geometry(config)
+    volumes, interfaces, baffles = process_geometry(config)
     default_volume = assign_cell_zones_to_interfaces(volumes)
     model_bounding_box = gmsh.model.get_bounding_box(-1,-1)
 
