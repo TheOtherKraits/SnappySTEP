@@ -49,9 +49,9 @@ def run_snappy_step(file_name,v,vf):
     generate_surface_mesh(config)
 
     # Write Mesh
-    write_surface_meshes(volumes, interfaces, step_name, geometry_path)
+    write_surface_meshes(volumes, interfaces, baffles ,step_name, geometry_path)
     if config["snappyHexMeshSetup"].get("edgeMesh", False):
-        write_edge_meshes(volumes, interfaces, geometry_path)
+        write_edge_meshes(volumes, interfaces, baffles, geometry_path)
     if config["snappyHexMeshSetup"].get("refinementRegions", False):
         write_refinement_regions_meshes(volumes, geometry_path)
 

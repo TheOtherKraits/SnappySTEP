@@ -9,21 +9,27 @@ class Volume:
         self._tags: list[int] = tags
         self.exterior_tags: list[int] = []
         self.interface_tags: list[int] = []
+        self.baffle_tags: list[int] = []
         self.exterior_patches: dict = {}
         self.exterior_patch_edges: dict = {}
-        self.interface_patches: list[int] = []
-        self.baffle_patches: list[int] = []
+        self.interface_patches: list[Interface] = []
+        self.baffle_patches: list[Baffle] = []
         self.name = gmsh.model.getEntityName(3,tags[0])
         self.face_dim_tags: list[tuple[int,int]] = []
+        self.embedded_dim_tags: list[tuple[int,int]]  = []
         for tag in tags:
             self.face_dim_tags.extend(gmsh.model.getBoundary([(3,tag)], False, False, False))
+            self.embedded_dim_tags.extend(gmsh.model.mesh.getEmbedded(3,tag))
         self.inside_point: list[float] = []
         for dim_tag in self.face_dim_tags:
             if len(gmsh.model.getAdjacencies(2,dim_tag[1])[0]) == 1:
                 self.exterior_tags.append(dim_tag[1])
+            elif set(gmsh.model.getAdjacencies(dim_tag[0], dim_tag[1])[0]).issubset(set(self._tags)): # all adjacenceis the same Volume obj, therefor baffle
+                self.baffle_tags.append(dim_tag[1])
             else:
-                self.interface_tags.append(dim_tag[1])
-        
+                self.interface_tags.append(dim_tag[1]) # normal interface
+        for dim_tag in self.embedded_dim_tags:
+            self.baffle_tags.append(dim_tag[1])
         for tag in self.exterior_tags:
             name = gmsh.model.getEntityName(2, tag)
             if not name:
@@ -61,31 +67,25 @@ class Interface:
 class Baffle:
     """ TODO """
     face_tags = []
-    def __init__(self, name: str, face_tags: list[int], edge_tags: set[int]):
+    def __init__(self, volume: Volume, name: str, face_tags: list[int], edge_tags: set[int]):
+        self.volume: Volume
         self.face_tags: list[int] = face_tags
         self.name: str = name
         self.edge_tags: set[int] = edge_tags
         Baffle.face_tags.extend(face_tags)
 
-def get_baffles() -> list[Baffle]:
+def get_baffles(volumes: list[Volume]) -> list[Baffle]:
     baffles: list[Baffle]= []
-    baffle_groups = {}
-    face_dim_tags = gmsh.model.getEntities(2)
-    for dim_tag in face_dim_tags:
-        if not gmsh.model.getEntityName(dim_tag[0], dim_tag[1]):
-            continue
-        upward_adjacencies = gmsh.model.getAdjacencies(dim_tag[0], dim_tag[1])[0]
-        if upward_adjacencies.size == 0:
-            set_tag_name_group(baffle_groups, dim_tag)
-        elif len({gmsh.model.getEntityName(3, item) for item in upward_adjacencies}) == 1: # All adjacent volumes have same name
-            set_tag_name_group(baffle_groups, dim_tag)
-        else:
-            continue
-    for group in baffle_groups:
-        edges = set()
-        for face in baffle_groups[group]:
-            edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
-        baffles.append(Baffle(group, baffle_groups[group],edges))
+    for entity in volumes:
+        baffle_groups = {}
+        for tag in entity.baffle_tags:
+            set_tag_name_group(baffle_groups, (2, tag))
+        for group in baffle_groups:
+            edges = set()
+            for face in baffle_groups[group]:
+                edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
+            entity.baffle_patches.append(Baffle(entity, group + '_' + entity.name, baffle_groups[group],edges))
+    baffles.extend(entity.baffle_patches)
     return baffles
 
 def get_volumes() -> list[Volume]:
@@ -102,7 +102,7 @@ def process_geometry(config: dict):
     """ TODO """
     volumes: list[Volume] = get_volumes()
     interfaces: list[Interface] = []
-    baffles: list[Baffle]= get_baffles()
+    baffles: list[Baffle]= get_baffles(volumes)
     for element in volumes:
         element.get_inside_point(config)
     for index_a, volume_a in enumerate(volumes):
@@ -137,7 +137,7 @@ def process_geometry(config: dict):
     return volumes, interfaces, baffles
 
 
-def set_tag_name_group(groups: dict, dim_tag):
+def set_tag_name_group(groups: dict, dim_tag: tuple[int, int]):
     """ TODO """
     baffle_name = gmsh.model.getEntityName(dim_tag[0], dim_tag[1])
     if baffle_name in groups.keys():
@@ -149,7 +149,7 @@ def get_location_in_mesh(entity: Volume):
     """ TODO """
     coordinates = []
     # First try center of mass
-    coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tag))
+    coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tags[0]))
     if check_coordinate(entity, coordinates):
         print("Found by center of mass")
         print(coordinates)
@@ -180,9 +180,9 @@ def get_location_in_mesh(entity: Volume):
     exit(1)
 
 def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
-    if gmsh.model.isInside(3,entity._tag,coordinates):
+    if gmsh.model.isInside(3,entity._tags[0],coordinates):
         distances = []
-        for face in entity.exterior_tags + entity.interface_tags:
+        for face in entity.exterior_tags + entity.interface_tags + Baffle.face_tags:
             closest_point = gmsh.model.getClosestPoint(2,face,coordinates)[0]
             distances.append(math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2))
             if distances[-1] < 1e-6:
@@ -232,7 +232,7 @@ def linspace(a, b, n):
 
 def generate_search_grid(entity: Volume, order: int):
     """ TODO """
-    x_min, y_min, z_min, x_max, y_max, z_max = gmsh.model.getBoundingBox(3,entity._tag)
+    x_min, y_min, z_min, x_max, y_max, z_max = gmsh.model.getBoundingBox(3,entity._tags[0])
     n_divisons = [9, 99, 999]
     mins = [x_min, y_min, z_min]
     deltas = [x_max - x_min, y_max - y_min, z_max - z_min]
@@ -292,6 +292,7 @@ def imprint_geometry():
     if len(gmsh.model.getEntities(3)) != number_volumes:
         print("Baffle(s) split volume(s)") # remove print statemnt later
         rename_out_map_entities(out_map)
+    
 
 def rename_out_map_entities(out_map: list[list[tuple]]):
     """TODO"""
