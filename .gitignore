@@ -184,3 +184,7 @@ snappyStepSplitMeshRegions.sh
 
 #FreeCAD
 *.FCBak
+
+# other
+temp_test
+test_temp

@@ -4,7 +4,7 @@ import math
 import gmsh
 from foamlib import FoamFile, FoamCase
 
-from .geometry import validate_name, Volume, Interface
+from .geometry import validate_name, Volume, Interface, Baffle
 
 
 def get_geometry_path(): 
@@ -253,7 +253,7 @@ def write_commands(file_name: str, commands: list):
     with open(file_name, 'w') as script:
         script.write("\n".join(commands))
 
-def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step_name, path):
+def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], baffles: list[Baffle], step_name, path):
     """ TODO """
     # Exterior Patches, single file
     gmsh.model.removePhysicalGroups([])
@@ -270,6 +270,14 @@ def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step
         gmsh.write(os.path.join(path,instance.name+".stl"))
     gmsh.model.removePhysicalGroups([])
 
+    # Baffles, one per file
+    for instance in baffles:
+        gmsh.model.removePhysicalGroups([])
+        gmsh.model.addPhysicalGroup(2,instance.face_tags, -1, instance.name)
+        gmsh.write(os.path.join(path,instance.name+".stl"))
+    gmsh.model.removePhysicalGroups([])
+
+
 def write_refinement_regions_meshes(volumes: list[Volume], path):
     gmsh.model.removePhysicalGroups([])
     for instance in volumes:
@@ -277,7 +285,7 @@ def write_refinement_regions_meshes(volumes: list[Volume], path):
         gmsh.write(os.path.join(path,instance.name+"_refinement_region.stl"))
         gmsh.model.removePhysicalGroups([])
 
-def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], path):
+def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], baffles: list[Baffle], path):
     """ TODO """
     if not os.path.exists(os.path.join(path,"edges")):
         os.makedirs(os.path.join(path,"edges"))
@@ -293,7 +301,13 @@ def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], path):
         gmsh.model.addPhysicalGroup(1,list(instance.edge_tags),-1,instance.name)
         gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
-        
+    
+    for instance in baffles:
+        gmsh.model.removePhysicalGroups([])
+        gmsh.model.addPhysicalGroup(1,list(instance.edge_tags),-1,instance.name)
+        gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
+    gmsh.model.removePhysicalGroups([])
+
 def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: list[Interface],step_name: str, config:dict):
     """ TODO """
     # Geometry section
