@@ -284,27 +284,30 @@ def imprint_geometry():
             print("Coherence changed number of volumes. Check geometry. Exiting")
             gmsh.finalize()
             exit(1)
-    out_dims, out_map = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(2),gmsh.model.occ.getEntities(2))
-    rename_out_map_entities(out_map)
-    out_dims, out_map = gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
+    names = collect_entity_names()
+    input_dims = gmsh.model.occ.getEntities()
+    out_dims, out_map = gmsh.model.occ.fragment(input_dims,input_dims)
+    gmsh.model.occ.synchronize()
+    rename_out_map_entities(input_dims, names, out_map)
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
-    if len(gmsh.model.getEntities(3)) != number_volumes:
-        print("Baffle(s) split volume(s)") # remove print statemnt later
-        rename_out_map_entities(out_map)
+    print("temp")
     
+def collect_entity_names() -> dict:
+    names = {}
+    entities = gmsh.model.occ.getEntities(2) + gmsh.model.occ.getEntities(3)
+    for entity in entities:
+        entity_name = gmsh.model.get_entity_name(entity[0], entity[1])
+        if entity_name:
+            names[entity] = entity_name
+    return names
 
-def rename_out_map_entities(out_map: list[list[tuple]]):
+def rename_out_map_entities(input_tags: list[tuple[int,int]], names: dict, out_map: list[list[tuple[int,int]]]):
     """TODO"""
-    for group in out_map:
-            if len(group)>1:
-                for entity in group:
-                    if entity == group[0]:
-                        group_name = gmsh.model.getEntityName(entity[0], entity[1])
-                        if group_name == '':
-                            break
-                    else:
-                        gmsh.model.set_entity_name(entity[0], entity[1],group_name)
+    for index, input_tag in enumerate(input_tags):
+        if input_tag in names:
+            for dim_tag in out_map[index]:
+                gmsh.model.setEntityName(dim_tag[0], dim_tag[1], names[input_tag])
 
 def remove_face_labels_on_volumes():
     """ TODO """
