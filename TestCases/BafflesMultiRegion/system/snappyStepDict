@@ -23,7 +23,7 @@ snappyHexMeshSetup
     refinementRegions yes;
     multiRegionFeatureSnap yes;
     generateBlockMeshDict yes;
-    backgroundMeshSize (0.01 0.01 0.01);
+    backgroundMeshSize (0.002 0.002 0.002);
     defaultSurfaceRefinement (2 2);
     defaultEdgeRefinement 1;
     defaultRegionRefinement ((1 1));
