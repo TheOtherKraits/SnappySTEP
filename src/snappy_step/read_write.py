@@ -200,6 +200,14 @@ def write_sHMD(new_dict):
     for key in new_dict:
         file[key] = new_dict[key]
 
+def write_create_baffles_dict(baffles_dict: dict):
+    fn = "./system/createBafflesDict"
+    if os.path.isfile(fn):
+        os.remove(fn)
+    file = FoamFile("./system/createBafflesDict")
+    for key in baffles_dict:
+        file[key] = baffles_dict[key]
+
 def ask_yes_no(question):
     """ TODO """
     while True:
@@ -308,7 +316,7 @@ def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], baffles
         gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
 
-def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: list[Interface],step_name: str, config:dict):
+def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], step_name: str, config:dict):
     """ TODO """
     # Geometry section
     new_dict["geometry"][step_name] = {}
@@ -320,12 +328,14 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
         new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
+    for instance in baffles:
+        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
     if config["snappyHexMeshSetup"].get("refinementRegions", False):
         for instance in volumes:
             new_dict["geometry"][instance.name+'_refinement_region'] = {"type":"triSurfaceMesh",'file':f'"{instance.name}_refinement_region.stl"'}
     
  
-def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
+def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], step_name: str, config: dict):
     """ TODO """
     # Exterior Surfaces
     level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
@@ -347,6 +357,10 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["cellZone"] = instance.cell_zone_volume.name
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["mode"] = "insidePoint"
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_point
+    # Baffles
+    for instance in baffles:
+        level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name] = {"faceZone": instance.name, "level": level, "faceType": "internal"}
 
 def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: list[Volume], config: dict):
     new_dict["castellatedMeshControls"]["refinementRegions"] = {}
@@ -354,7 +368,7 @@ def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: l
         level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
         new_dict["castellatedMeshControls"]["refinementRegions"][instance.name+"_refinement_region"] = {"mode": "inside", "levels": level}
 
-def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config):
+def configure_sHMD_feature_edges(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], config: dict):
     """ TODO """
     new_dict["snapControls"]["explicitFeatureSnap"] = True
     new_dict["snapControls"]["implicitFeatureSnap"] = False
@@ -365,8 +379,21 @@ def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config
     for instance in interfaces:
         file_path = "\"edges/"+instance.name+"_edge.vtk\""
         set_edge_mesh_entry(new_dict, file_path, config)
+    for instance in baffles:
+        file_path = "\"edges/"+instance.name+"_edge.vtk\""
+        set_edge_mesh_entry(new_dict, file_path, config)
 
-
+def configure_baffles_dict(baffles: list[Baffle]) -> dict:
+    baffles_dict = {"baffles": {}}
+    baffles_dict["internalFacesOnly"] = True
+    for baffle in baffles:
+        baffles_dict["baffles"][baffle.name] = {}
+        baffles_dict["baffles"][baffle.name]['type'] = 'faceZone'
+        baffles_dict["baffles"][baffle.name]['zoneName'] = baffle.name
+        baffles_dict["baffles"][baffle.name]['owner'] = {'name': baffle.name, 'type': 'wall'}
+        baffles_dict["baffles"][baffle.name]['neighbour'] = baffles_dict["baffles"][baffle.name]['owner']
+    return baffles_dict
+        
 def find_last_edge_mesh_refinement(old_dict:dict, file_path:str):
     """ TODO """
     if old_dict is None or file_path is None:

@@ -85,7 +85,7 @@ def get_baffles(volumes: list[Volume]) -> list[Baffle]:
             for face in baffle_groups[group]:
                 edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
             entity.baffle_patches.append(Baffle(entity, group + '_' + entity.name, baffle_groups[group],edges))
-    baffles.extend(entity.baffle_patches)
+        baffles.extend(entity.baffle_patches)
     return baffles
 
 def get_volumes() -> list[Volume]:
