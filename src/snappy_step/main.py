@@ -63,7 +63,7 @@ def run_snappy_step(file_name,v,vf):
         write_mesh_quality_dict()
     configure_sHMD_geometry(new_dict, volumes, interfaces, baffles, step_name, config)
     configure_sHMD_refinement_surfaces(new_dict, old_dict, volumes, interfaces, baffles, step_name, config)
-    new_dict['castellatedMeshControls']['insidePoint'] = default_volume.inside_point
+    new_dict['castellatedMeshControls']['insidePoints'] = default_volume.inside_points
     # Edge Mesh
     if config["snappyHexMeshSetup"].get("edgeMesh", False):
         configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, baffles, config)

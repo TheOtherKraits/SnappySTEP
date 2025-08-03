@@ -356,11 +356,15 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
         if instance.cell_zone_volume is not None:
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["cellZone"] = instance.cell_zone_volume.name
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["mode"] = "insidePoint"
-            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_point
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_points[0]
     # Baffles
     for instance in baffles:
         level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
         new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name] = {"faceZone": instance.name, "level": level, "faceType": "internal"}
+        if instance.inside_point is not None:
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["cellZone"] = instance.volume.name
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["mode"] = "insidePoint"
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.inside_point
 
 def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: list[Volume], config: dict):
     new_dict["castellatedMeshControls"]["refinementRegions"] = {}
