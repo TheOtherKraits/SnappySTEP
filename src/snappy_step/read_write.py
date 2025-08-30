@@ -200,13 +200,23 @@ def write_sHMD(new_dict):
     for key in new_dict:
         file[key] = new_dict[key]
 
-def write_create_baffles_dict(baffles_dict: dict):
-    fn = "./system/createBafflesDict"
+def write_create_baffles_dict(entity: Volume):
+    """TODO"""
+    fn = f"./system/createBafflesDict_{entity.name}"
     if os.path.isfile(fn):
         os.remove(fn)
-    file = FoamFile("./system/createBafflesDict")
-    for key in baffles_dict:
-        file[key] = baffles_dict[key]
+    file = FoamFile(f"./system/createBafflesDict_{entity.name}")
+    for key in entity.create_baffles_dict:
+        file[key] = entity.create_baffles_dict[key]
+
+def write_baffles_script(volumes: list[Volume]):
+    commands = []
+    for volume in volumes:
+        if volume.baffle_patches:
+            commands.append(f"createBaffles -overwrite -region {volume.name} -dict ./system/createBafflesDict_{volume.name}")
+    file_name = "snappyStepCreateBaffles.sh"
+    write_commands(file_name,commands)
+    os.chmod("./snappyStepCreateBaffles.sh",0o755)
 
 def ask_yes_no(question):
     """ TODO """

@@ -73,13 +73,17 @@ def run_snappy_step(file_name,v,vf):
     # Future layers here
     # createBafflesDict
     if baffles:
-        baffles_dict = configure_baffles_dict(baffles)
+        for entity in volumes:
+            entity.create_baffles_dict = configure_baffles_dict(entity.baffle_patches)
     # Apply settings from previous sHMD
     if not config['snappyHexMeshSetup'].get('overwriteRefinements', False) and old_dict is not None:
         apply_previous_mesh_settings(new_dict, old_dict, config)
     write_sHMD(new_dict)
     if baffles:
-        write_create_baffles_dict(baffles_dict)
+        for entity in volumes:
+            if entity.create_baffles_dict:
+                write_create_baffles_dict(entity)
+        write_baffles_script(volumes)
 
     # Write mesh split command
     write_split_command(default_volume.name)

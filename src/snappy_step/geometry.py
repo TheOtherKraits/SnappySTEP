@@ -17,6 +17,7 @@ class Volume:
         self.name = gmsh.model.getEntityName(3,tags[0])
         self.face_dim_tags: list[tuple[int,int]] = []
         self.embedded_dim_tags: list[tuple[int,int]]  = []
+        self.create_baffles_dict: dict = {}
         for tag in tags:
             self.face_dim_tags.extend(gmsh.model.getBoundary([(3,tag)], False, False, False))
             self.embedded_dim_tags.extend(gmsh.model.mesh.getEmbedded(3,tag))
