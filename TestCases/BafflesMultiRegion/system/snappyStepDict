@@ -1,0 +1,35 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "system";
+    object snappyStepDict;
+}
+
+gmsh
+{
+    meshSizeMax 1000;
+    meshSizeMin 0;
+    meshSizeFactor 1;
+    meshSizeFromCurvature 90;
+    meshAlgorithm 6;
+    scaling 1;
+}
+
+snappyHexMeshSetup
+{
+    edgeMesh yes;
+    refinementRegions yes;
+    multiRegionFeatureSnap yes;
+    generateBlockMeshDict yes;
+    backgroundMeshSize (0.002 0.002 0.002);
+    defaultSurfaceRefinement (2 2);
+    defaultEdgeRefinement 1;
+    defaultRegionRefinement ((1 1));
+    overwriteRefinements no;
+}
+
+locationInMesh
+{
+}

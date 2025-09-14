@@ -5,22 +5,32 @@ import numpy as np
 
 class Volume:
     """ TODO """
-    def __init__(self, tag: int):
-        self._tag: int = tag
+    def __init__(self, tags: list[int]):
+        self._tags: list[int] = tags
         self.exterior_tags: list[int] = []
         self.interface_tags: list[int] = []
+        self.baffle_tags: list[int] = []
         self.exterior_patches: dict = {}
         self.exterior_patch_edges: dict = {}
-        self.interface_patches: list[int] = []
-        self.name = gmsh.model.getEntityName(3,tag)
-        self.face_dim_tags: list[tuple[int,int]] = gmsh.model.getBoundary([(3,tag)], False, False, False)
-        self.inside_point: list[float] = []
+        self.interface_patches: list[Interface] = []
+        self.baffle_patches: list[Baffle] = []
+        self.name = gmsh.model.getEntityName(3,tags[0])
+        self.face_dim_tags: list[tuple[int,int]] = []
+        self.embedded_dim_tags: list[tuple[int,int]]  = []
+        self.create_baffles_dict: dict = {}
+        for tag in tags:
+            self.face_dim_tags.extend(gmsh.model.getBoundary([(3,tag)], False, False, False))
+            self.embedded_dim_tags.extend(gmsh.model.mesh.getEmbedded(3,tag))
+        self.inside_points: list[list[float]] = []
         for dim_tag in self.face_dim_tags:
             if len(gmsh.model.getAdjacencies(2,dim_tag[1])[0]) == 1:
                 self.exterior_tags.append(dim_tag[1])
+            elif set(gmsh.model.getAdjacencies(dim_tag[0], dim_tag[1])[0]).issubset(set(self._tags)): # all adjacenceis the same Volume obj, therefor baffle
+                self.baffle_tags.append(dim_tag[1])
             else:
-                self.interface_tags.append(dim_tag[1])
-        
+                self.interface_tags.append(dim_tag[1]) # normal interface
+        for dim_tag in self.embedded_dim_tags:
+            self.baffle_tags.append(dim_tag[1])
         for tag in self.exterior_tags:
             name = gmsh.model.getEntityName(2, tag)
             if not name:
@@ -41,10 +51,10 @@ class Volume:
     def get_inside_point(self, config: dict):
         """ TODO """
         if "locationInMesh" in config and self.name in config["locationInMesh"]:
-            self.inside_point =  config["locationInMesh"][self.name]
+            self.inside_points =  config["locationInMesh"][self.name]
             print(f"Using coordiantes in config file for {self.name}.")
         else:
-            self.inside_point = get_location_in_mesh(self)
+            self.inside_points = get_location_in_mesh(self)
         
 class Interface:
     """ TODO """
@@ -54,15 +64,61 @@ class Interface:
         self.name: str = name
         self.edge_tags: set[int] = edge_tags
         self.cell_zone_volume: Volume|None = None
-        
+    
+class Baffle:
+    """ TODO """
+    face_tags = []
+    def __init__(self, volume: Volume, name: str, face_tags: list[int], edge_tags: set[int]):
+        self.volume: Volume = volume
+        self.face_tags: list[int] = face_tags
+        self.name: str = name
+        self.edge_tags: set[int] = edge_tags
+        self.inside_point: list[float]|None = None
+        Baffle.face_tags.extend(face_tags)
+
+def get_baffles(volumes: list[Volume]) -> list[Baffle]:
+    baffles: list[Baffle]= []
+    for entity in volumes:
+        baffle_groups = {}
+        for tag in entity.baffle_tags:
+            set_tag_name_group(baffle_groups, (2, tag))
+        for group in baffle_groups:
+            edges = set()
+            for face in baffle_groups[group]:
+                edges.update(set(gmsh.model.getAdjacencies(2, face)[1]))
+            entity.baffle_patches.append(Baffle(entity, group + '_' + entity.name, baffle_groups[group],edges))
+        baffles.extend(entity.baffle_patches)
+    return baffles
+
+def set_baffle_inside_point(volumes: list[Volume], default_volume: Volume):
+    """TODO"""
+    for entity in volumes:
+        if len(entity._tags) == 1:
+            continue
+        elif entity == default_volume:
+            continue
+        else:
+            for index, tag in enumerate(entity._tags):
+                if index == 0:
+                    continue
+                entity.baffle_patches[index-1].inside_point = entity.inside_points[index]
+
+
+def get_volumes() -> list[Volume]:
+    volume_groups = {}
+    volume_dim_tags = gmsh.model.getEntities(3)
+    volumes = []
+    for dim_tag in volume_dim_tags:
+        set_tag_name_group(volume_groups, dim_tag)
+    for group in volume_groups:
+        volumes.append(Volume(volume_groups[group]))
+    return volumes
 
 def process_geometry(config: dict):
     """ TODO """
-    volumes: list[Volume] = []
+    volumes: list[Volume] = get_volumes()
     interfaces: list[Interface] = []
-    volume_dim_tags = gmsh.model.getEntities(3)
-    for dim_tag in volume_dim_tags:
-        volumes.append(Volume(dim_tag[1]))
+    baffles: list[Baffle]= get_baffles(volumes)
     for element in volumes:
         element.get_inside_point(config)
     for index_a, volume_a in enumerate(volumes):
@@ -94,47 +150,60 @@ def process_geometry(config: dict):
                     interfaces.append(Interface(volume_a,volume_b,interface_name,groups[interface_name],edges))
                     volume_a.interface_patches.append(interfaces[-1])
                     volume_b.interface_patches.append(interfaces[-1])
-    return volumes, interfaces
+    return volumes, interfaces, baffles
 
+
+def set_tag_name_group(groups: dict, dim_tag: tuple[int, int]):
+    """ TODO """
+    baffle_name = gmsh.model.getEntityName(dim_tag[0], dim_tag[1])
+    if baffle_name in groups.keys():
+        groups[baffle_name].append(dim_tag[1])
+    else:
+        groups[baffle_name] = [dim_tag[1]]
 
 def get_location_in_mesh(entity: Volume):
     """ TODO """
     coordinates = []
-    # First try center of mass
-    coordinates = list(gmsh.model.occ.getCenterOfMass(3,entity._tag))
-    if check_coordinate(entity, coordinates):
-        print("Found by center of mass")
-        print(coordinates)
-        return coordinates
-    # try center of bounding box
-    xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,entity._tag)
-    coordinates = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
+    for tag in entity._tags:
+        # First try center of mass
+        coordinate = list(gmsh.model.occ.getCenterOfMass(3,tag))
+        if check_coordinate(entity, coordinate, tag):
+            print("Found by center of mass")
+            print(coordinate)
+            coordinates.append(coordinate)
+            continue
+        # try center of bounding box
+        xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(3,tag)
+        coordinate = [(xmax+xmin)/2,(ymax+ymin)/2,(zmax+zmin)/2]
 
-    if check_coordinate(entity, coordinates):
-        print("Found by bounding box center")
-        print(coordinates)
-        return coordinates
-    # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
-    orders = [0, 1, 2]
-    for order in orders: # coarse grid to fine grid
-        points, spacing = generate_search_grid(entity, order)
-        print(f'Grid search order {order+1}')
-        for xi in points[0]:
-            for yi in points[1]:
-                for zi in points[2]:
-                    coordinates = [xi, yi, zi]
-                    if check_coordinate(entity, coordinates):
-                        coordinates = local_grid_search(entity, coordinates, spacing)
-                        print("Found by grid search")
-                        print(coordinates)
-                        return coordinates
-    print("Point not found.")
-    exit(1)
+        if check_coordinate(entity, coordinate, tag):
+            print("Found by bounding box center")
+            print(coordinate)
+            coordinates.append(coordinate)
+            continue
+        # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
+        orders = [0, 1, 2]
+        for order in orders: # coarse grid to fine grid
+            points, spacing = generate_search_grid(entity, order, tag)
+            print(f'Grid search order {order+1}')
+            for xi in points[0]:
+                for yi in points[1]:
+                    for zi in points[2]:
+                        coordinate = [xi, yi, zi]
+                        if check_coordinate(entity, coordinate, tag):
+                            coordinate = local_grid_search(entity, coordinate, spacing, tag)
+                            print("Found by grid search")
+                            print(coordinate)
+                            coordinates.append(coordinate)
+                            continue
+        print("Point not found.")
+        exit(1)
+    return coordinates
 
-def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
-    if gmsh.model.isInside(3,entity._tag,coordinates):
+def check_coordinate(entity: Volume, coordinates: list[float], tag: int) -> bool | float:
+    if gmsh.model.isInside(3,tag,coordinates):
         distances = []
-        for face in entity.exterior_tags + entity.interface_tags:
+        for face in entity.exterior_tags + entity.interface_tags + Baffle.face_tags:
             closest_point = gmsh.model.getClosestPoint(2,face,coordinates)[0]
             distances.append(math.sqrt((closest_point[0] - coordinates[0])**2 + (closest_point[1] - coordinates[1])**2 + (closest_point[2] - coordinates[2])**2))
             if distances[-1] < 1e-6:
@@ -143,24 +212,24 @@ def check_coordinate(entity: Volume, coordinates: list[float]) -> bool | float:
     else:
         return False
 
-def local_grid_search(entity: Volume, coordinates: list[float], spacing:float) -> list[float]:
+def local_grid_search(entity: Volume, coordinates: list[float], spacing:float, tag: int) -> list[float]:
     print('Intial coordinate found. Looking for optimized point.')
     max_iterations = 10
     new_spacing = spacing/20.0
     coordinates = np.array(coordinates)
-    current_point = check_coordinate(entity,coordinates)
+    current_point = check_coordinate(entity,coordinates, tag)
     for iteration in np.linspace(0,max_iterations):
         gradient = np.zeros(3)
-        gradient[0] = (check_coordinate(entity, [coordinates[0] + new_spacing, coordinates[1], coordinates[2]])
+        gradient[0] = (check_coordinate(entity, [coordinates[0] + new_spacing, coordinates[1], coordinates[2]], tag)
                     - current_point)/(new_spacing)
-        gradient[1] = (check_coordinate(entity, [coordinates[0], coordinates[1] + new_spacing, coordinates[2]])
+        gradient[1] = (check_coordinate(entity, [coordinates[0], coordinates[1] + new_spacing, coordinates[2]], tag)
                     - current_point)/(new_spacing)
-        gradient[2] = (check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] + new_spacing])
+        gradient[2] = (check_coordinate(entity, [coordinates[0], coordinates[1], coordinates[2] + new_spacing], tag)
                     - current_point)/(new_spacing)
         magnitude = np.linalg.norm(gradient)
         move_vector = np.divide(gradient,magnitude)
         new_coordinates = np.add(coordinates, move_vector*new_spacing)
-        new_point = check_coordinate(entity,new_coordinates)
+        new_point = check_coordinate(entity,new_coordinates, tag)
         if new_point < current_point:
             return coordinates
         else:
@@ -182,9 +251,9 @@ def linspace(a, b, n):
     diff = (float(b) - a)/(n - 1)
     return [diff * i + a  for i in range(1, n-1)] # Skips first and last
 
-def generate_search_grid(entity: Volume, order: int):
+def generate_search_grid(entity: Volume, order: int, tag: int):
     """ TODO """
-    x_min, y_min, z_min, x_max, y_max, z_max = gmsh.model.getBoundingBox(3,entity._tag)
+    x_min, y_min, z_min, x_max, y_max, z_max = gmsh.model.getBoundingBox(3,tag)
     n_divisons = [9, 99, 999]
     mins = [x_min, y_min, z_min]
     deltas = [x_max - x_min, y_max - y_min, z_max - z_min]
@@ -231,16 +300,34 @@ def imprint_geometry():
     if number_volumes > 1:
         gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
         gmsh.model.occ.removeAllDuplicates()
-    gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(2))
+        # Check coherence results
+        if len(gmsh.model.getEntities(3)) != number_volumes:
+            print("Coherence changed number of volumes. Check geometry. Exiting")
+            gmsh.finalize()
+            exit(1)
+    names = collect_entity_names()
+    input_dims = gmsh.model.occ.getEntities()
+    out_dims, out_map = gmsh.model.occ.fragment(input_dims,input_dims)
+    gmsh.model.occ.synchronize()
+    rename_out_map_entities(input_dims, names, out_map)
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
+    
+def collect_entity_names() -> dict:
+    names = {}
+    entities = gmsh.model.occ.getEntities(2) + gmsh.model.occ.getEntities(3)
+    for entity in entities:
+        entity_name = gmsh.model.get_entity_name(entity[0], entity[1])
+        if entity_name:
+            names[entity] = entity_name
+    return names
 
-    # Check coherence results
-    volumes = gmsh.model.getEntities(3)
-    if len(volumes) != number_volumes:
-        print("Coherence changed number of volumes. Check geometry. Exiting")
-        gmsh.finalize()
-        exit(1)
+def rename_out_map_entities(input_tags: list[tuple[int,int]], names: dict, out_map: list[list[tuple[int,int]]]):
+    """TODO"""
+    for index, input_tag in enumerate(input_tags):
+        if input_tag in names:
+            for dim_tag in out_map[index]:
+                gmsh.model.setEntityName(dim_tag[0], dim_tag[1], names[input_tag])
 
 def remove_face_labels_on_volumes():
     """ TODO """
@@ -258,6 +345,7 @@ def assign_cell_zones_to_interfaces(volumes:list[Volume]) -> Volume:
     volumes.sort(key=lambda x: len(x.interface_patches), reverse=False)
     for element in volumes:
         if element == volumes[-1]:
+            set_baffle_inside_point(volumes, element)
             return element
         for surface in element.interface_patches:
             if surface.cell_zone_volume is None:
@@ -265,6 +353,7 @@ def assign_cell_zones_to_interfaces(volumes:list[Volume]) -> Volume:
                 break
             else:
                 continue
+    
                 
 def generate_surface_mesh(config: dict):
     """ TODO """

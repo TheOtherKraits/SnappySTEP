@@ -4,7 +4,7 @@ import math
 import gmsh
 from foamlib import FoamFile, FoamCase
 
-from .geometry import validate_name, Volume, Interface
+from .geometry import validate_name, Volume, Interface, Baffle
 
 
 def get_geometry_path(): 
@@ -200,6 +200,24 @@ def write_sHMD(new_dict):
     for key in new_dict:
         file[key] = new_dict[key]
 
+def write_create_baffles_dict(entity: Volume):
+    """TODO"""
+    fn = f"./system/createBafflesDict_{entity.name}"
+    if os.path.isfile(fn):
+        os.remove(fn)
+    file = FoamFile(f"./system/createBafflesDict_{entity.name}")
+    for key in entity.create_baffles_dict:
+        file[key] = entity.create_baffles_dict[key]
+
+def write_baffles_script(volumes: list[Volume]):
+    commands = []
+    for volume in volumes:
+        if volume.baffle_patches:
+            commands.append(f"createBaffles -overwrite -region {volume.name} -dict ./system/createBafflesDict_{volume.name}")
+    file_name = "snappyStepCreateBaffles.sh"
+    write_commands(file_name,commands)
+    os.chmod("./snappyStepCreateBaffles.sh",0o755)
+
 def ask_yes_no(question):
     """ TODO """
     while True:
@@ -253,7 +271,7 @@ def write_commands(file_name: str, commands: list):
     with open(file_name, 'w') as script:
         script.write("\n".join(commands))
 
-def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step_name, path):
+def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], baffles: list[Baffle], step_name, path):
     """ TODO """
     # Exterior Patches, single file
     gmsh.model.removePhysicalGroups([])
@@ -270,6 +288,14 @@ def write_surface_meshes(volumes: list[Volume],interfaces: list[Interface], step
         gmsh.write(os.path.join(path,instance.name+".stl"))
     gmsh.model.removePhysicalGroups([])
 
+    # Baffles, one per file
+    for instance in baffles:
+        gmsh.model.removePhysicalGroups([])
+        gmsh.model.addPhysicalGroup(2,instance.face_tags, -1, instance.name)
+        gmsh.write(os.path.join(path,instance.name+".stl"))
+    gmsh.model.removePhysicalGroups([])
+
+
 def write_refinement_regions_meshes(volumes: list[Volume], path):
     gmsh.model.removePhysicalGroups([])
     for instance in volumes:
@@ -277,7 +303,7 @@ def write_refinement_regions_meshes(volumes: list[Volume], path):
         gmsh.write(os.path.join(path,instance.name+"_refinement_region.stl"))
         gmsh.model.removePhysicalGroups([])
 
-def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], path):
+def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], baffles: list[Baffle], path):
     """ TODO """
     if not os.path.exists(os.path.join(path,"edges")):
         os.makedirs(os.path.join(path,"edges"))
@@ -293,8 +319,14 @@ def write_edge_meshes(volumes: list[Volume],interfaces: list[Interface], path):
         gmsh.model.addPhysicalGroup(1,list(instance.edge_tags),-1,instance.name)
         gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
     gmsh.model.removePhysicalGroups([])
-        
-def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: list[Interface],step_name: str, config:dict):
+    
+    for instance in baffles:
+        gmsh.model.removePhysicalGroups([])
+        gmsh.model.addPhysicalGroup(1,list(instance.edge_tags),-1,instance.name)
+        gmsh.write(os.path.join(path,"edges",instance.name+"_edge.vtk"))
+    gmsh.model.removePhysicalGroups([])
+
+def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], step_name: str, config:dict):
     """ TODO """
     # Geometry section
     new_dict["geometry"][step_name] = {}
@@ -306,12 +338,14 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume],interfaces: li
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
         new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
+    for instance in baffles:
+        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
     if config["snappyHexMeshSetup"].get("refinementRegions", False):
         for instance in volumes:
             new_dict["geometry"][instance.name+'_refinement_region'] = {"type":"triSurfaceMesh",'file':f'"{instance.name}_refinement_region.stl"'}
     
  
-def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], step_name: str, config: dict):
+def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], step_name: str, config: dict):
     """ TODO """
     # Exterior Surfaces
     level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
@@ -332,7 +366,15 @@ def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: 
         if instance.cell_zone_volume is not None:
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["cellZone"] = instance.cell_zone_volume.name
             new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["mode"] = "insidePoint"
-            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_point
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.cell_zone_volume.inside_points[0]
+    # Baffles
+    for instance in baffles:
+        level = config["snappyHexMeshSetup"]["defaultSurfaceRefinement"]
+        new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name] = {"faceZone": instance.name, "level": level, "faceType": "internal"}
+        if instance.inside_point is not None:
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["cellZone"] = instance.volume.name
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["mode"] = "insidePoint"
+            new_dict["castellatedMeshControls"]["refinementSurfaces"][instance.name]["insidePoint"] = instance.inside_point
 
 def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: list[Volume], config: dict):
     new_dict["castellatedMeshControls"]["refinementRegions"] = {}
@@ -340,7 +382,7 @@ def configure_sHMD_refinement_regions(new_dict: dict, old_dict: dict, volumes: l
         level = config["snappyHexMeshSetup"]["defaultRegionRefinement"]
         new_dict["castellatedMeshControls"]["refinementRegions"][instance.name+"_refinement_region"] = {"mode": "inside", "levels": level}
 
-def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config):
+def configure_sHMD_feature_edges(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], config: dict):
     """ TODO """
     new_dict["snapControls"]["explicitFeatureSnap"] = True
     new_dict["snapControls"]["implicitFeatureSnap"] = False
@@ -351,8 +393,21 @@ def configure_sHMD_feature_edges(new_dict, old_dict, volumes, interfaces, config
     for instance in interfaces:
         file_path = "\"edges/"+instance.name+"_edge.vtk\""
         set_edge_mesh_entry(new_dict, file_path, config)
+    for instance in baffles:
+        file_path = "\"edges/"+instance.name+"_edge.vtk\""
+        set_edge_mesh_entry(new_dict, file_path, config)
 
-
+def configure_baffles_dict(baffles: list[Baffle]) -> dict:
+    baffles_dict = {"baffles": {}}
+    baffles_dict["internalFacesOnly"] = True
+    for baffle in baffles:
+        baffles_dict["baffles"][baffle.name] = {}
+        baffles_dict["baffles"][baffle.name]['type'] = 'faceZone'
+        baffles_dict["baffles"][baffle.name]['zoneName'] = baffle.name
+        baffles_dict["baffles"][baffle.name]['owner'] = {'name': baffle.name, 'type': 'wall'}
+        baffles_dict["baffles"][baffle.name]['neighbour'] = baffles_dict["baffles"][baffle.name]['owner']
+    return baffles_dict
+        
 def find_last_edge_mesh_refinement(old_dict:dict, file_path:str):
     """ TODO """
     if old_dict is None or file_path is None:
