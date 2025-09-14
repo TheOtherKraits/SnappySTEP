@@ -312,7 +312,6 @@ def imprint_geometry():
     rename_out_map_entities(input_dims, names, out_map)
     gmsh.model.occ.removeAllDuplicates()
     gmsh.model.occ.synchronize()
-    print("temp")
     
 def collect_entity_names() -> dict:
     names = {}
