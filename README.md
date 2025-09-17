@@ -1,6 +1,9 @@
 # SnappySTEP
  Tool to read STEP files and generate STLs and dictionaries for meshing with SnappyHexMesh in OpenFOAM
 
+# Current Status
+This tool is under active development
+
 # Basic Usage
 
 1. Build OpenFOAM Case directory and required dictionaries (e.g. `system/controlDict`)
@@ -13,3 +16,11 @@
 6. If multi-region case, run `./snappyStepSplitMeshRegions`
 7. Run `checkMesh`
 8. Inspect mesh in ParaView
+
+# Features
+* Import geometry from STEP assembly files.
+* Generate STL files for snappHexMesh.
+* Generate snappyHexMeshDict file.
+* Detect interfaces between volumes for multi-region cases.
+* Apply boundary patches, defined by coincident surface bodies.
+* Detect baffles and create createBaffleDict files, defined by surface bodies embedded in solids solid bodies.
