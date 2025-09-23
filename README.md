@@ -4,6 +4,10 @@
 # Current Status
 This tool is under active development
 
+# Installation 
+1. Clone repository
+2. From the root directory of the repo run `pip install .`
+
 # Basic Usage
 1. Build OpenFOAM Case directory and required dictionaries (e.g. `system/controlDict`)
 2. Place STEP file in `constant/geometry/` directory.
@@ -15,7 +19,8 @@ This tool is under active development
 8. If multi-region case, run `./snappyStepSplitMeshRegions.sh`
 9. If there are baffles, run `./snappyStepCreateBaffles.sh`
 10. Run `checkMesh`
-11. Inspect mesh in ParaView
+11. Create dummy file for ParaView `touch case.foam`
+12. Inspect mesh in ParaView
 
 # Features
 * Import geometry from STEP assembly files.
