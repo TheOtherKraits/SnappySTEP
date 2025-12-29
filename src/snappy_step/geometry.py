@@ -315,8 +315,20 @@ def imprint_geometry():
     rename_out_map_entities(input_dims, names, out_map)
     remove_free_surfaces()
     # remove extra duplicate volumes
-    gmsh.model.occ.remove(list(set(gmsh.model.getEntities(3)) - set(original_volumes)))
+    remove_duplicate_volumes(input_dims, out_map, original_volumes)
     gmsh.model.occ.synchronize()
+
+def remove_duplicate_volumes(input_dims: list ,out_map: list, original_volumes: list) -> None:
+    new_volumes = set()
+    for i, input_dim in enumerate(input_dims):
+        if input_dim[0] == 3:
+            for dim_tag in out_map[i]:
+                new_volumes.add(dim_tag)
+        else:
+            continue
+    to_remove = set(gmsh.model.occ.getEntities(3)) - new_volumes
+    if to_remove:
+        gmsh.model.occ.remove(list(to_remove), True)
 
     
 def remove_free_surfaces() -> None:
