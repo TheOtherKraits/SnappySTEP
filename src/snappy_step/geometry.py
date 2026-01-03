@@ -182,23 +182,27 @@ def get_location_in_mesh(entity: Volume):
             coordinates.append(coordinate)
             continue
         # sweep through grids, increasingly fine. Choosing plane in cernter, sweeping though 2d locations on grid
-        orders = [0, 1, 2]
-        for order in orders: # coarse grid to fine grid
-            points, spacing = generate_search_grid(entity, order, tag)
-            print(f'Grid search order {order+1}')
-            for xi in points[0]:
-                for yi in points[1]:
-                    for zi in points[2]:
-                        coordinate = [xi, yi, zi]
-                        if check_coordinate(entity, coordinate, tag):
-                            coordinate = local_grid_search(entity, coordinate, spacing, tag)
-                            print("Found by grid search")
-                            print(coordinate)
-                            coordinates.append(coordinate)
-                            continue
-        print("Point not found.")
-        exit(1)
+        global_grid_search(coordinates, entity, tag)
+        
     return coordinates
+
+def global_grid_search(coordinates, entity, tag):
+    orders = [0, 1, 2]
+    for order in orders: # coarse grid to fine grid
+        points, spacing = generate_search_grid(entity, order, tag)
+        print(f'Grid search order {order+1}')
+        for xi in points[0]:
+            for yi in points[1]:
+                for zi in points[2]:
+                    coordinate = [xi, yi, zi]
+                    if check_coordinate(entity, coordinate, tag):
+                        coordinate = local_grid_search(entity, coordinate, spacing, tag)
+                        print("Found by grid search")
+                        print(coordinate)
+                        coordinates.append(coordinate)
+                        return
+    print("Point not found.")
+    exit(1)
 
 def check_coordinate(entity: Volume, coordinates: list[float], tag: int) -> bool | float:
     if gmsh.model.isInside(3,tag,coordinates):
@@ -213,7 +217,7 @@ def check_coordinate(entity: Volume, coordinates: list[float], tag: int) -> bool
         return False
 
 def local_grid_search(entity: Volume, coordinates: list[float], spacing:float, tag: int) -> list[float]:
-    print('Intial coordinate found. Looking for optimized point.')
+    print('Initial coordinate found. Looking for optimized point.')
     max_iterations = 10
     new_spacing = spacing/20.0
     coordinates = np.array(coordinates)
