@@ -95,7 +95,7 @@ def write_snappy_step_dict_template():
         except OSError as e:
             print(f"Error: Could not delete '{file_path}'. Reason: {e}")
     file["gmsh"] = {"meshSizeMax": 1000, "meshSizeMin": 0,"meshSizeFactor": 1,"meshSizeFromCurvature": 90,"meshAlgorithm": 6, "scaling": 1}
-    file["snappyHexMeshSetup"] = {"edgeMesh": True, "refinementRegions": False,"multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "defaultRegionRefinement": [[1, 2]], "overwriteRefinements": False}
+    file["snappyHexMeshSetup"] = {"edgeMesh": True, "refinementRegions": False,"multiRegionFeatureSnap": True, "generateBlockMeshDict": True, "backgroundMeshSize": [0.01, 0.01, 0.01], "defaultSurfaceRefinement": [2, 2],"defaultEdgeRefinement": 1, "defaultRegionRefinement": [[1, 2]], "overwriteRefinements": False, "surfaceGeometrySyntax": "triSurface"}
     file["locationInMesh"] = {}
 
 def validate_snappy_step_dict(config:dict) -> None:
@@ -106,7 +106,7 @@ def validate_snappy_step_dict(config:dict) -> None:
 
     requiredEntries = {
         'gmsh': ['meshSizeMax', 'meshSizeMin', 'meshSizeFactor', 'meshSizeFromCurvature', 'meshAlgorithm', 'scaling'],
-        'snappyHexMeshSetup': ['backgroundMeshSize', 'defaultSurfaceRefinement']
+        'snappyHexMeshSetup': ['backgroundMeshSize', 'defaultSurfaceRefinement', "surfaceGeometrySyntax"]
     }
     entries.extend(list(set(requiredEntries['gmsh']) - set(config.get('gmsh',{}).keys())))
     entries.extend(list(set(requiredEntries['snappyHexMeshSetup']) - set(config.get('snappyHexMeshSetup',{}).keys())))
@@ -330,19 +330,19 @@ def configure_sHMD_geometry(new_dict: dict, volumes: list[Volume], interfaces: l
     """ TODO """
     # Geometry section
     new_dict["geometry"][step_name] = {}
-    new_dict["geometry"][step_name]["type"] = "triSurfaceMesh"
+    new_dict["geometry"][step_name]["type"] = config["snappyHexMeshSetup"].get("surfaceGeometrySyntax")
     new_dict["geometry"][step_name]["file"] = "\""+step_name+".stl"+"\""
     new_dict["geometry"][step_name]["regions"] = {}
     for instance in volumes:
         for patch in instance.exterior_patches:
             new_dict["geometry"][step_name]["regions"][patch] = {"name":patch}
     for instance in interfaces:
-        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
+        new_dict["geometry"][instance.name] = {"type":config["snappyHexMeshSetup"].get("surfaceGeometrySyntax"),'file':f'"{instance.name}.stl"'}
     for instance in baffles:
-        new_dict["geometry"][instance.name] = {"type":"triSurfaceMesh",'file':f'"{instance.name}.stl"'}
+        new_dict["geometry"][instance.name] = {"type":config["snappyHexMeshSetup"].get("surfaceGeometrySyntax"),'file':f'"{instance.name}.stl"'}
     if config["snappyHexMeshSetup"].get("refinementRegions", False):
         for instance in volumes:
-            new_dict["geometry"][instance.name+'_refinement_region'] = {"type":"triSurfaceMesh",'file':f'"{instance.name}_refinement_region.stl"'}
+            new_dict["geometry"][instance.name+'_refinement_region'] = {"type":config["snappyHexMeshSetup"].get("surfaceGeometrySyntax"),'file':f'"{instance.name}_refinement_region.stl"'}
     
  
 def configure_sHMD_refinement_surfaces(new_dict: dict, old_dict: dict, volumes: list[Volume], interfaces: list[Interface], baffles: list[Baffle], step_name: str, config: dict):
