@@ -293,8 +293,9 @@ def load_step_file(file_path, config):
 
 def imprint_geometry():
     """ TODO """
+    original_volumes = gmsh.model.getEntities(3)
     # How many volumes before coherence
-    number_volumes = len(gmsh.model.getEntities(3))
+    number_volumes = len(original_volumes)
 
     # Remove extra names face names. Prevent issues when tags change.
     remove_face_labels_on_volumes()
@@ -302,21 +303,48 @@ def imprint_geometry():
     # Apply coherence to remove duplicate surfaces, edges, and points
     print('Imprinting features and removing duplicate faces')
     if number_volumes > 1:
-        gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3))
+        gmsh.model.occ.fragment(gmsh.model.occ.getEntities(3),gmsh.model.occ.getEntities(3),-1,True,True)
         gmsh.model.occ.removeAllDuplicates()
+        gmsh.model.occ.synchronize()
         # Check coherence results
         if len(gmsh.model.getEntities(3)) != number_volumes:
             print("Coherence changed number of volumes. Check geometry. Exiting")
             gmsh.finalize()
             exit(1)
+    remove_face_labels_on_volumes()        
     names = collect_entity_names()
     input_dims = gmsh.model.occ.getEntities()
-    out_dims, out_map = gmsh.model.occ.fragment(input_dims,input_dims)
+    out_dims, out_map = gmsh.model.occ.fragment(input_dims,input_dims,-1, False, False)
     gmsh.model.occ.synchronize()
     rename_out_map_entities(input_dims, names, out_map)
-    gmsh.model.occ.removeAllDuplicates()
+    remove_free_surfaces()
+    # remove extra duplicate volumes
+    remove_duplicate_volumes(input_dims, out_map, original_volumes)
     gmsh.model.occ.synchronize()
+
+def remove_duplicate_volumes(input_dims: list ,out_map: list, original_volumes: list) -> None:
+    new_volumes = set()
+    for i, input_dim in enumerate(input_dims):
+        if input_dim[0] == 3:
+            for dim_tag in out_map[i]:
+                new_volumes.add(dim_tag)
+        else:
+            continue
+    to_remove = set(gmsh.model.occ.getEntities(3)) - new_volumes
+    if to_remove:
+        gmsh.model.occ.remove(list(to_remove), True)
+
     
+def remove_free_surfaces() -> None:
+    surfaces = gmsh.model.occ.getEntities(2)
+    to_remove = []
+    for surface in surfaces:
+        if gmsh.model.getAdjacencies(surface[0], surface[1])[0].size == 0:
+            to_remove.append(surface)
+    if to_remove:
+        gmsh.model.occ.remove(to_remove,True)
+
+
 def collect_entity_names() -> dict:
     names = {}
     entities = gmsh.model.occ.getEntities(2) + gmsh.model.occ.getEntities(3)
@@ -340,8 +368,8 @@ def remove_face_labels_on_volumes():
         adjacent = gmsh.model.getAdjacencies(face[0],face[1])
         if adjacent[0].size > 0:
             name = gmsh.model.getEntityName(face[0],face[1])
-            if name is not None:
-                gmsh.model.removeEntityName(name)
+            if name != '':
+                gmsh.model.setEntityName(face[0],face[1],'')
                 print("removed "+ name)
 
 def assign_cell_zones_to_interfaces(volumes:list[Volume]) -> Volume:
